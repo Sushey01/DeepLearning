@@ -68,7 +68,7 @@
 % =====================================================
 \begin{abstract}
 \noindent
-This report investigates transfer learning for classifying peripheral blood cells into three classes --- red blood cells (RBCs), white blood cells (WBCs), and platelets --- using microscopy crops derived from the TXL-PBC dataset. Three ImageNet-pretrained backbones, EfficientNet-B0, MobileNetV3-Small, and DenseNet121, are compared under an identical training configuration, with class imbalance addressed through a weighted sampler and effective-number-weighted focal loss. An initial evaluation reported perfect test-set accuracy, which prompted a structured data-integrity investigation rather than acceptance at face value: filename, source-image, and official split-list checks ruled out conventional leakage, while a perceptual-hash audit identified 694 near-duplicate crops (97\% RBC) that were removed before retraining. Following this cleanup, EfficientNet-B0 achieved a test macro-F1 of 1.0000, with MobileNetV3-Small and DenseNet121 close behind at 0.9952 and 0.9916 respectively. Grad-CAM visualisations confirm that predictions are driven by cell morphology rather than background artefacts, and the varying error patterns across architectures support genuine class separability over residual leakage. The report documents this validation process alongside the standard comparison of architectures, losses, and computational cost.
+This report investigates transfer learning for classifying peripheral blood cells into three classes --- red blood cells (RBCs), white blood cells (WBCs), and platelets --- using microscopy crops derived from the TXL-PBC dataset. Three ImageNet-pretrained backbones, EfficientNet-B0, MobileNetV3-Small, and DenseNet121, are compared under an identical training configuration, with class imbalance addressed through a weighted sampler and weighted cross-entropy loss. An initial evaluation reported perfect test-set accuracy, which prompted a structured data-integrity investigation rather than acceptance at face value: filename, source-image, and official split-list checks ruled out conventional leakage, while a perceptual-hash audit identified 694 near-duplicate crops (97\% RBC) that were removed before retraining. Following this cleanup, EfficientNet-B0 achieved a test macro-F1 of 1.0000, with MobileNetV3-Small and DenseNet121 close behind at 0.9952 and 0.9916 respectively. Grad-CAM visualisations provide qualitative evidence about the regions used by the model, while the varying error patterns across architectures support genuine class separability over residual leakage. The report documents this validation process alongside the standard comparison of architectures, losses, and computational cost.
 \end{abstract}
 
 \tableofcontents
@@ -126,7 +126,7 @@ Because the class distribution is skewed, macro-averaged precision, recall, and 
 
 Raw images and YOLO labels are processed by \texttt{crop\_dataset.py}, which converts each bounding box to pixel coordinates, crops the region, discards degenerate crops, and writes the result into the class-folder structure described in Section 2. Splitting uses TXL-PBC's official image lists where present, with a seeded random 70/15/15 fallback retained in code for robustness but not active in this project's runtime, since the official lists were available.
 
-Training-time augmentation consists of random horizontal/vertical flips, random rotation (\(\pm 15^\circ\)), and colour jitter, followed by ImageNet normalisation. Validation and test transforms apply only resizing and normalisation. A \texttt{WeightedRandomSampler} inversely weights each class by frequency so that mini-batches are approximately class-balanced during training.
+Training-time augmentation consists of random rotation (up to \(20^\circ\)), random horizontal flipping, and brightness/contrast jitter, followed by ImageNet normalisation. Validation and test transforms apply only resizing and normalisation. A \texttt{WeightedRandomSampler} inversely weights each class by frequency so that mini-batches are approximately class-balanced during training.
 
 \subsection{Near-Duplicate Audit and Dataset Cleaning}
 
@@ -142,38 +142,34 @@ The pHash audit found near-duplicate pairs across every split combination: 382 p
 
 \subsection{Model Architectures}
 
-Three ImageNet-pretrained backbones are compared, each with the original classifier head replaced by:
-\[
-\text{Dropout}(p) \rightarrow \text{Linear}(d, 512) \rightarrow \text{ReLU} \rightarrow \text{Dropout}(0.5) \rightarrow \text{Linear}(512, 3)
-\]
-EfficientNet-B0 (\(d=1280\)) uses compound scaling of depth, width, and resolution \cite{tan2019efficientnet} and offers a strong accuracy-to-parameter ratio. MobileNetV3-Small (\(d=576\)) is optimised for low-resource inference using depthwise separable convolutions and squeeze-and-excitation blocks \cite{howard2019mobilenetv3}, included here specifically as an efficiency baseline. DenseNet121 (\(d=1024\)) connects each layer to all subsequent layers within a dense block \cite{huang2017densely}, which was expected to benefit fine texture retention in microscopy imagery. These three were chosen to span a range of parameter budgets and design philosophies (efficiency-first, feature-reuse-first, and a balanced default) so that the comparison reflects a genuine architectural trade-off rather than three arbitrary choices.
+Three ImageNet-pretrained backbones are compared. The implementation replaces the original ImageNet classifier with a three-class output: EfficientNet-B0 and DenseNet121 use dropout followed by a linear layer, while MobileNetV3-Small replaces its final classifier layer with a three-class linear layer. EfficientNet-B0 uses compound scaling of depth, width, and resolution \cite{tan2019efficientnet} and offers a strong accuracy-to-parameter ratio. MobileNetV3-Small \cite{howard2019mobilenetv3} is included as an efficiency baseline, while DenseNet121 \cite{huang2017densely} provides a feature-reuse baseline. The comparison therefore spans different parameter budgets and architectural designs without claiming a common custom head that is not present in the implementation.
 
 \begin{table}[H]
 \centering
 \caption{Backbone comparison.}
 \label{tab:backbones}
-\begin{tabular}{lccc}
+\begin{tabular}{lcc}
 \toprule
-\textbf{Model} & \textbf{Params (M)} & \textbf{Feature dim} & \textbf{Role} \\
+\textbf{Model} & \textbf{Trainable params (M)} & \textbf{Role} \\
 \midrule
-EfficientNet-B0     & \(\sim\)5.3  & 1280 & Primary comparison \\
-MobileNetV3-Small   & \(\sim\)2.5  & 576  & Efficiency baseline \\
-DenseNet121         & \(\sim\)8.0  & 1024 & Feature-reuse baseline \\
+EfficientNet-B0     & 4.011  & Primary comparison \\
+MobileNetV3-Small   & 1.968  & Efficiency baseline \\
+DenseNet121         & 6.957  & Feature-reuse baseline \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Loss Functions and Class Imbalance}
 
-Two loss functions are implemented and compared. Class-weighted cross-entropy weights each class inversely to its frequency, \(w_c \propto 1/n_c\). Focal loss with effective-number weighting \cite{lin2017focal,cui2019class} instead uses
+Two loss functions are implemented. Class-weighted cross-entropy weights each class inversely to its frequency, \(w_c \propto 1/n_c\), and is the loss selected by the project configuration. Focal loss with effective-number weighting \cite{lin2017focal,cui2019class} is available as an alternative and instead uses
 \[
 \mathcal{L}_{\text{focal}} = -\frac{1}{N}\sum_{i=1}^{N} \alpha_{y_i} (1 - \hat{p}_{i, y_i})^{\gamma} \log \hat{p}_{i, y_i},
 \]
-where \(\alpha_c\) derives from the effective number of samples \((1-\beta^{n_c})/(1-\beta)\). Focal loss was selected as the primary training loss because, unlike simple oversampling or fixed inverse-frequency weighting, it down-weights already easy, well-classified examples during training rather than only reweighting per-class, which is more appropriate given how visually dominant and repetitive the majority RBC class is in this dataset.
+where \(\alpha_c\) derives from the effective number of samples \((1-\beta^{n_c})/(1-\beta)\). The reported experiments use weighted cross-entropy together with the weighted sampler; the focal-loss option was not used for the final configured runs.
 
 \subsection{Training Configuration}
 
-Models are optimised with AdamW \cite{loshchilov2019adamw} (head learning rate \(1\times10^{-3}\), backbone learning rate \(1\times10^{-4}\), weight decay \(1\times10^{-4}\)), using mixed-precision training and a two-stage schedule: a frozen-backbone head warm-up, followed by full fine-tuning at a reduced learning rate. Checkpoints are saved on best validation macro-F1 rather than accuracy, since accuracy alone would favour the majority RBC class. Per-epoch training time and peak GPU memory are logged automatically for the efficiency comparison in Section 4.
+Models are optimised with Adam using a learning rate of \(3\times10^{-4}\), weight decay of \(1\times10^{-5}\), batch size 32, and a maximum of 30 epochs. Early stopping uses a patience of six epochs. Checkpoints are saved on best validation macro-F1 rather than accuracy, since accuracy alone would favour the majority RBC class. Per-epoch training time and peak GPU memory are logged automatically when available.
 
 % =====================================================
 \section{Experimental Results}
@@ -217,7 +213,7 @@ EfficientNet-B0 recorded zero misclassifications across all 1,768 test images. M
 
 A single perfect score would ordinarily warrant scepticism on a real dataset, so this result is validated rather than simply reported. Two pieces of evidence support its validity. First, the errors that do occur are architecture-dependent rather than uniform: if the perfect score for EfficientNet-B0 were an artefact of residual data leakage, the same leakage would be expected to inflate all three models similarly, since leakage is a property of the data pipeline, not the model. Instead, MobileNetV3-Small and DenseNet121 each make distinct, small numbers of errors, which is inconsistent with a shared leakage explanation.
 
-Second, EfficientNet-B0's correct predictions are not uniformly over-confident, which would be the expected signature of memorisation rather than generalisation. Confidence scores for its 1,768 correct predictions range from 57.2\% to 100\%, with a mean of 99.47\% and a median of 99.98\%; 22 correct predictions fall below 90\% confidence and 123 fall below 99\%. This spread indicates the model is genuinely uncertain on some harder cases while still classifying them correctly, rather than confidently repeating memorised answers.
+Second, qualitative inspection suggests that correct predictions are not necessarily uniformly certain, which is consistent with some samples being harder than others. However, the current repository does not preserve a confidence-distribution output file, so this observation is reported as an interpretation rather than as a verified aggregate statistic. A future experiment should save per-sample probabilities before making numerical claims about the confidence distribution.
 
 \subsection{Grad-CAM Explainability}
 
