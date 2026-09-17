@@ -1,5 +1,6 @@
 import argparse
 import csv
+from io import BytesIO
 from pathlib import Path
 
 import torch
@@ -24,6 +25,10 @@ def load_model(model_name: str, config_path: str = "configs/config.yaml"):
 
 def preprocess_image(image_path: str, cfg: dict):
     image = Image.open(image_path).convert("RGB")
+    return preprocess_image_object(image, cfg)
+
+
+def preprocess_image_object(image: Image.Image, cfg: dict):
     transform = transforms.Compose([
         transforms.Resize((cfg["image_size"], cfg["image_size"])),
         transforms.ToTensor(),
@@ -32,9 +37,22 @@ def preprocess_image(image_path: str, cfg: dict):
     return transform(image)
 
 
+def preprocess_image_bytes(image_bytes: bytes, cfg: dict):
+    image = Image.open(BytesIO(image_bytes)).convert("RGB")
+    return preprocess_image_object(image, cfg)
+
+
 def predict_image(image_path: str, model, classes: list, cfg: dict, device, threshold: float = 0.0):
     x = preprocess_image(image_path, cfg).unsqueeze(0).to(device)
+    return predict_tensor(x, classes, cfg, device, image_path, threshold)
 
+
+def predict_image_bytes(image_bytes: bytes, model, classes: list, cfg: dict, device, threshold: float = 0.0, image_name: str = "uploaded_image"):
+    x = preprocess_image_bytes(image_bytes, cfg).unsqueeze(0).to(device)
+    return predict_tensor(x, classes, cfg, device, image_name, threshold)
+
+
+def predict_tensor(x, classes: list, cfg: dict, device, image_name: str, threshold: float = 0.0):
     with torch.no_grad():
         logits = model(x)
         probs = torch.softmax(logits, dim=1)[0]
@@ -43,7 +61,7 @@ def predict_image(image_path: str, model, classes: list, cfg: dict, device, thre
         confidence = float(probs[pred_idx].item())
 
     result = {
-        "image": image_path,
+        "image": image_name,
         "predicted_class": pred_label,
         "confidence": confidence,
         "probabilities": {cls: float(probs[i].item()) for i, cls in enumerate(classes)},

@@ -8,3 +8,4 @@ seaborn
 pyyaml
 pillow
 tqdm
+flask
