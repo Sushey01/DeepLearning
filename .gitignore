@@ -11,3 +11,4 @@ data/
 outputs/checkpoints/
 outputs/logs/
 outputs/results/
+**/node_modules/
