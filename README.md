@@ -40,10 +40,37 @@ blood-cell-classification/
    point `crop_dataset.py` at them so crops from the same source image stay
    in the same split (no leakage).
 
-2. **Set up the environment.**
-   ```bash
-   python -m venv venv && source venv/bin/activate
-   pip install -r requirements.txt
+2. **Set up the environment and GPU.**
+   This project is intended for Python 3.11. Using Python 3.14 on Windows often
+   resolves to the Microsoft Store alias instead of the actual interpreter, which
+   causes CUDA/PyTorch setup issues and prevents GPU detection.
+
+   Recommended Windows setup:
+   ```powershell
+   # Use the real Python 3.11 interpreter explicitly if the default 'python' alias points to 3.14
+   & "C:\Users\MSI\AppData\Local\Programs\Python\Python311\python.exe" -m venv venv
+   .\venv\Scripts\Activate.ps1
+   python -V
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   ```
+
+   If you are using a GPU machine, verify CUDA first before training:
+   ```powershell
+   python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'No GPU')"
+   ```
+   Expected output:
+   ```text
+   True
+   NVIDIA GeForce RTX 3060
+   ```
+   If it prints `False` or `No GPU`, the issue is not in the project code — it is
+   the local Python/CUDA/driver setup.
+
+   For Windows with NVIDIA GPUs, install the NVIDIA driver and then install the
+   CUDA-enabled PyTorch build:
+   ```powershell
+   python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
    ```
 
 3. **Crop the dataset** (raw images + bounding boxes → per-class image crops):

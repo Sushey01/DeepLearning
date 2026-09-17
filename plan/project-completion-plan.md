@@ -2,50 +2,50 @@
 
 ## Current status
 
-The project pipeline is already in a workable state:
+The pipeline is already functional and the repo is in a strong state for finishing the project:
 
-- The editor reports no Python errors for the workspace.
-- The training data generation step has produced class folders under `data/processed/train`, `data/processed/val`, and `data/processed/test`.
-- A smoke test confirmed that a single training batch can be loaded and passed through the EfficientNet-B0 model successfully.
+- The workspace has no reported Python errors.
+- The dataset has already been processed and class folders exist under `data/processed/train`, `data/processed/val`, and `data/processed/test`.
+- A batch-level smoke test confirmed that the EfficientNet-B0 model can load and process data successfully.
+- The project is now being narrowed to a practical final delivery plan, rather than broad benchmarking for every model.
 
-The only issue observed so far is operational: the full training run is long-running and appears to time out under a short terminal limit, but it is not failing with a code-level exception during the initial forward/backward pass.
+## Key decision
 
-## Phase 1: Dataset verification
+The main model for this project will be EfficientNet-B0. The other backbones are optional comparison experiments, not mandatory deliverables.
 
-- Confirm the TXL-PBC data is present under `data/raw/images` and `data/raw/labels`.
-- Re-check the class counts after crop generation and keep them aligned with the expected RBC/WBC/Platelet distribution.
-- Ensure the split files match the image-level assignments and do not leak the same original image across train/val/test.
+This is the right choice because:
+- it is already the preferred backbone in the repository
+- it is a strong transfer-learning model for this task
+- it keeps the project realistic and finishable within time
 
-## Phase 2: Training validation
+## Phase 1: Final data verification
 
-Run the model pipeline in a longer-lived terminal session so the job is not interrupted by timeout limits:
+- Confirm that the required TXL-PBC files are present under `data/raw/images` and `data/raw/labels`.
+- Re-check class counts after cropping and verify the distribution is reasonable.
+- Ensure the split files are aligned and there is no data leakage between train/val/test.
+- Verify that the class ordering in `configs/config.yaml` matches the YOLO labels.
+
+## Phase 2: Main training run (priority)
+
+Run the primary training job in a long-running terminal so it is not interrupted:
 
 ```bash
 source venv/bin/activate
 python src/train.py --config configs/config.yaml --model efficientnet_b0
 ```
 
-Then repeat for the other candidate backbones:
-
-```bash
-python src/train.py --config configs/config.yaml --model mobilenet_v3_small
-python src/train.py --config configs/config.yaml --model densenet121
-```
-
 Checklist:
-- model checkpoint saved in `outputs/checkpoints/`
-- CSV metrics logged in `outputs/logs/`
-- early stopping triggered only when validation macro-F1 stops improving
-- best checkpoint chosen on validation macro-F1, not raw accuracy
+- checkpoint saved in `outputs/checkpoints/`
+- logs written to `outputs/logs/`
+- best model chosen on validation macro-F1
+- training time and memory recorded
 
-## Phase 3: Evaluation and comparison
+## Phase 3: Primary evaluation
 
-Once each model finishes training, run the evaluator:
+Run the evaluation for the chosen main model:
 
 ```bash
 python src/evaluate.py --config configs/config.yaml --model efficientnet_b0
-python src/evaluate.py --config configs/config.yaml --model mobilenet_v3_small
-python src/evaluate.py --config configs/config.yaml --model densenet121
 ```
 
 Collect:
@@ -53,24 +53,54 @@ Collect:
 - macro precision
 - macro recall
 - macro F1
-- confusion matrices
+- confusion matrix
 - per-class recall for WBC and Platelet
 
-## Phase 4: Final model selection
+## Phase 4: Optional comparison run
 
-- Compare the three models using the saved evaluation JSON outputs.
-- Select the strongest model based on validation macro-F1 and the final test-set macro F1.
-- Use the WBC/Platelet recall values as the clinically important decision metric for the final recommendation.
+Only do this if the assignment or supervisor expects a model comparison.
 
-## Phase 5: Report completion
+Run MobileNetV3-Small as a lightweight comparison:
 
-Prepare the final project write-up with:
-- dataset description
-- preprocessing and split strategy
-- model setup and training choices
-- evaluation results and confusion matrix interpretation
+```bash
+python src/train.py --config configs/config.yaml --model mobilenet_v3_small
+python src/evaluate.py --config configs/config.yaml --model mobilenet_v3_small
+```
+
+DenseNet121 is optional and should only be trained if time allows.
+
+## Phase 5: Backup and transfer workflow
+
+Because checkpoints and logs are not tracked in GitHub, store them outside the repo when training is complete.
+
+Recommended workflow:
+- keep `outputs/` in the project for active use
+- zip or copy `outputs/checkpoints`, `outputs/logs`, and `outputs/results` to Google Drive later
+- do not commit these files to GitHub
+
+Example:
+
+```powershell
+Compress-Archive -Path .\outputs\* -DestinationPath .\project_outputs_backup.zip -Force
+```
+
+Then later move the zip to Google Drive.
+
+## Phase 6: Final report
+
+Prepare the final write-up with:
+- dataset overview and preprocessing
+- class imbalance handling strategy
+- EfficientNet-B0 model design and training process
+- evaluation metrics and confusion matrix interpretation
 - final recommendation and limitations
+
+## Final recommendation
+
+The project should be completed around the EfficientNet-B0 pipeline first. The extended comparison across all three models is optional and should only be done if the task specifically requires it.
+
+This keeps the work realistic, reduces wasted training time, and still gives a strong final result.
 
 ## Immediate next step
 
-The next action is to let the full training run finish in the background for the selected backbone, then save the evaluation artifacts and compare them before writing the final report.
+The next action is to train the EfficientNet-B0 model, evaluate it on the held-out test set, and only then decide whether any comparison runs are necessary.
