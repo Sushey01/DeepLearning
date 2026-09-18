@@ -76,16 +76,25 @@ def main(config_path: str, model_name: str):
 
     with open(log_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["epoch", "train_loss", "train_f1", "val_loss", "val_f1"])
+        writer.writerow([
+            "epoch", "train_loss", "train_f1", "val_loss", "val_f1",
+            "training_time_sec", "peak_gpu_memory_mb"
+        ])
 
         for epoch in tqdm(range(1, cfg["num_epochs"] + 1), desc=f"Training {model_name}"):
             train_loss, train_f1 = run_epoch(model, train_loader, criterion, optimizer, device, train=True)
             val_loss, val_f1 = run_epoch(model, val_loader, criterion, optimizer, device, train=False)
 
-            writer.writerow([epoch, train_loss, train_f1, val_loss, val_f1])
+            elapsed = time.time() - start_time
+            peak_mem_mb = (
+                torch.cuda.max_memory_allocated() / (1024 ** 2) if torch.cuda.is_available() else 0.0
+            )
+
+            writer.writerow([epoch, train_loss, train_f1, val_loss, val_f1, elapsed, peak_mem_mb])
             f.flush()
             print(f"Epoch {epoch}: train_loss={train_loss:.4f} train_f1={train_f1:.4f} "
-                  f"val_loss={val_loss:.4f} val_f1={val_f1:.4f}")
+                  f"val_loss={val_loss:.4f} val_f1={val_f1:.4f} "
+                  f"time={elapsed:.1f}s mem={peak_mem_mb:.0f}MB")
 
             if val_f1 > best_val_f1:
                 best_val_f1 = val_f1

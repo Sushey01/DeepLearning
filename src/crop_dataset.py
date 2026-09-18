@@ -31,8 +31,12 @@ def read_split_file(path: str) -> set:
 
 
 def assign_splits(image_stems: list, cfg: dict) -> dict:
-    """Return {stem: split_name}. Uses provided split files if present,
-    otherwise falls back to a random 70/15/15 split."""
+    """Return {stem: split_name}.
+
+    The current TXL-PBC project uses explicit split files on disk, which resolve to
+    approximately 70/20/10 for train/val/test. If those files are absent, the
+    fallback is a random 70/15/15 image-level split.
+    """
     train_set = read_split_file(cfg["split_files"]["train"])
     val_set = read_split_file(cfg["split_files"]["val"])
     test_set = read_split_file(cfg["split_files"]["test"])

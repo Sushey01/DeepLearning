@@ -75,10 +75,30 @@ Improve the usability, reporting quality, and validation strength of the project
 ### Task 12: Add explainability
 - Use Grad-CAM or similar tools to highlight which image region influenced the decision.
 - Helpful for understanding whether the model is focusing on the actual cell rather than background noise.
+- For this project specifically, this means a script similar to src/gradcam.py that loads a checkpoint and saves overlays for representative RBC/WBC/Platelet crops.
 
 ### Task 13: Add a live demo workflow
 - Prepare a presentation-ready demo where a user uploads a cell image and sees the prediction instantly.
 - This is useful for viva or project demonstration.
+
+## Phase 6: Reporting and model comparison
+
+### Task 14: Add model comparison metrics with runtime and memory
+- Extend the evaluation pipeline to merge per-model training time and peak GPU memory into the final comparison output.
+- Save the final table with columns including Model, Macro-F1, Macro-AUC, Accuracy, Params(M), Training Time, and Peak GPU Memory.
+
+### Task 15: Add combined confusion matrix comparison figure
+- Generate one side-by-side figure with a confusion matrix for each model to simplify visual comparison.
+- Use the same normalisation and shared color scale across all subplots.
+
+### Task 16: Add loss-curve visualisation
+- Read the CSV log files from outputs/logs and plot train/validation loss for all three backbones.
+- Save a single figure that clearly labels each model's curve.
+
+### Task 17: Check model metadata consistency
+- Confirm that the YOLO label order remains 0=WBC, 1=RBC, 2=Platelet in config.yaml and crop_dataset.py.
+- Confirm the MobileNet name string is consistently mobilenet_v3_small across all script entry points.
+- Flag any mismatch instead of silently changing project behavior.
 
 ## Recommended priority order
 

@@ -1,9 +1,10 @@
 # ---- Paths ----
 raw_images_dir: "data/raw/images"
 raw_labels_dir: "data/raw/labels"
-# Optional: text files listing which image filenames belong to which split
-# (use TXL-PBC's own split files if provided; otherwise crop_dataset.py
-# will fall back to a random 70/20/10 stratified-by-image split)
+# Optional: text files listing which image filenames belong to which split.
+# The current TXL-PBC dataset includes explicit split files that resolve to
+# approximately 70/20/10 (train/val/test). If those files are missing,
+# crop_dataset.py falls back to a random 70/15/15 image-level split.
 split_files:
   train: "data/raw/train.txt"
   val: "data/raw/val.txt"

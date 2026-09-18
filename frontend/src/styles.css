@@ -108,6 +108,23 @@ h1 {
   font-size: 1.5rem;
 }
 
+.threshold-control {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  color: #23364f;
+  font-weight: 600;
+}
+
+.threshold-control input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #dfe7f7;
+  background: white;
+  font-size: 1rem;
+}
+
 input[type='file'] {
   display: block;
   width: 100%;
@@ -172,6 +189,34 @@ input[type='file'] {
   margin-top: 8px;
   color: #1f5c41;
   font-weight: 700;
+}
+
+.warning-box {
+  margin-top: 12px;
+  background: #fff3d6;
+  border: 1px solid #f0d489;
+  color: #7a5300;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 600;
+}
+
+.probability-list {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.probability-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  color: #12345d;
 }
 
 .empty-state {

@@ -1,0 +1,60 @@
+{
+  "before": {
+    "train": {
+      "WBC": 908,
+      "RBC": 11220,
+      "Platelet": 382
+    },
+    "val": {
+      "WBC": 257,
+      "RBC": 3383,
+      "Platelet": 112
+    },
+    "test": {
+      "WBC": 133,
+      "RBC": 1699,
+      "Platelet": 49
+    }
+  },
+  "after": {
+    "train": {
+      "WBC": 901,
+      "RBC": 10854,
+      "Platelet": 382
+    },
+    "val": {
+      "WBC": 252,
+      "RBC": 3180,
+      "Platelet": 112
+    },
+    "test": {
+      "WBC": 127,
+      "RBC": 1593,
+      "Platelet": 48
+    }
+  },
+  "removed_count": 694,
+  "duplicate_clusters": 17449,
+  "removed_by_class": {
+    "WBC": 18,
+    "RBC": 675,
+    "Platelet": 1
+  },
+  "pairwise_counts": {
+    "train_val": {
+      "WBC": 5,
+      "RBC": 377,
+      "Platelet": 0
+    },
+    "train_test": {
+      "WBC": 3,
+      "RBC": 164,
+      "Platelet": 1
+    },
+    "val_test": {
+      "WBC": 1,
+      "RBC": 41,
+      "Platelet": 0
+    }
+  }
+}

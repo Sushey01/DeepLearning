@@ -1,11 +1,15 @@
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 from flask import Flask, jsonify, request
 
 ROOT = Path(__file__).resolve().parent.parent
+SRC = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
 from src.predict import load_model, predict_image_bytes
 
@@ -36,6 +40,8 @@ def predict():
     if file.filename == '':
         return jsonify({"error": "No file selected"}), 400
 
+    threshold = request.form.get('threshold', type=float, default=0.0)
+
     if MODEL is None:
         setup_model()
 
@@ -46,15 +52,19 @@ def predict():
         CLASSES,
         CFG,
         DEVICE,
-        threshold=0.0,
+        threshold=threshold,
         image_name=file.filename,
     )
     return jsonify({
         "predicted_class": result["predicted_class"],
         "confidence": round(result["confidence"], 4),
+        "threshold": threshold,
         "probabilities": {k: round(v, 4) for k, v in result["probabilities"].items()},
+        "warning": result.get("warning"),
     })
 
+
+app.routes = [SimpleNamespace(path=rule.rule) for rule in app.url_map.iter_rules()]
 
 if __name__ == '__main__':
     setup_model()
