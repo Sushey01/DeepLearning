@@ -14,8 +14,12 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
-from src.model import build_model
-from src.utils import get_device, load_config
+try:
+    from src.model import build_model
+    from src.utils import get_device, load_config
+except ModuleNotFoundError:
+    from model import build_model
+    from utils import get_device, load_config
 
 
 def get_target_layer(model, model_name: str):
@@ -40,9 +44,9 @@ def normalize_heatmap(heatmap):
 def overlay_heatmap(image_np, heatmap_np):
     heatmap = np.array(Image.fromarray(heatmap_np).resize((image_np.shape[1], image_np.shape[0])))
     heatmap = normalize_heatmap(heatmap)
-    jet = plt.cm.get_cmap("jet")
+    jet = plt.get_cmap("jet")
     heatmap_color = (jet(heatmap)[:, :, :3] * 255).astype(np.uint8)
-    overlay = (0.6 * image_np + 0.4 * heatmap_color).astype(np.uint8)
+    overlay = np.clip(0.55 * image_np + 0.45 * heatmap_color, 0, 255).astype(np.uint8)
     return overlay
 
 
@@ -77,15 +81,18 @@ def create_gradcam(model, image_tensor, target_class_idx, model_name: str):
     activation_map = activations[-1]
     grad_map = gradients[-1]
 
-    if activation_map.dim() == 4 and activation_map.shape[0] == 1:
+    if activation_map.dim() == 4:
         activation_map = activation_map[0]
-    if grad_map.dim() == 4 and grad_map.shape[0] == 1:
+    if grad_map.dim() == 4:
         grad_map = grad_map[0]
 
+    if activation_map.dim() != 3 or grad_map.dim() != 3:
+        raise RuntimeError(f"Unexpected feature-map shape for {model_name}: {activation_map.shape}, {grad_map.shape}")
+
     weights = grad_map.mean(dim=(1, 2))
-    cam = (weights[:, :, None, None] * activation_map).sum(dim=1)
+    cam = (weights[:, None, None] * activation_map).sum(dim=0)
     cam = torch.relu(cam)
-    cam = cam.cpu().numpy()[0]
+    cam = cam.cpu().numpy()
     return normalize_heatmap(cam)
 
 

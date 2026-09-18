@@ -1,113 +1,69 @@
 # Project Enhancement Plan
 
-This file outlines the practical next improvements for the current blood-cell classification project.
+This file records the improvements that were either completed for the current project or remain as optional future work.
 
 ## Goal
 
-Improve the usability, reporting quality, and validation strength of the project without changing the overall objective of classifying WBC, RBC, and Platelet cell crops.
+Improve the reporting quality, validation strength, and explainability of the blood-cell classification project without changing the underlying objective of classifying WBC, RBC, and Platelet cell crops.
 
-## Phase 1: Improve inference usability
+## Completed enhancement work
 
-### Task 1: Add folder-based prediction
-- Create a script that takes a folder of images and predicts each one.
-- Save results to a CSV file containing:
-  - image name
-  - predicted class
-  - confidence
-- This is useful for quick model testing on multiple images.
+The following items have already been implemented and verified in the current repo:
 
-### Task 2: Add a confidence threshold
-- If prediction confidence is below a chosen threshold, mark it as uncertain.
-- This helps avoid forcing a label when the model is unsure.
-- Useful for clinical-style interpretation and safer decision making.
+### Task 1: Model comparison and metrics summary
+Completed.
+- The project now generates a comparison table with Macro-F1, Macro-AUC, Accuracy, parameter count, training time, and peak GPU memory.
+- The data is saved under `outputs/results/comparison_table.json`.
 
-### Task 3: Improve the terminal output
-- Print the prediction in a cleaner format.
-- Show the top 3 class probabilities.
-- Add optional verbose mode for debugging.
+### Task 2: Combined confusion matrix comparison figure
+Completed.
+- A side-by-side confusion-matrix figure is generated under `outputs/results/confusion_matrices_all.png`.
 
-## Phase 2: Add a lightweight frontend
+### Task 3: Loss-curve visualisation
+Completed.
+- Training and validation loss curves are generated for the three backbones and saved as `outputs/results/loss_curves.png`.
 
-### Task 4: Create a simple Streamlit app
-- Upload one image or a folder of images.
-- Display the prediction in the browser.
-- Show confidence and class probabilities.
-- This turns the project into a demo-ready tool.
+### Task 4: Explainability through Grad-CAM
+Completed.
+- The Grad-CAM script was corrected and now produces visible heatmap overlays on original cell crops.
+- Outputs are saved under `outputs/results/gradcam_WBC_correct.png`, `gradcam_RBC_correct.png`, and `gradcam_Platelet_correct.png`.
 
-### Task 5: Optional Flask app
-- If needed, create a lightweight web interface for a more traditional web app setup.
-- Good for demonstrating the model to a supervisor or project audience.
+### Task 5: Data quality review and deduplication audit
+Completed.
+- Near-duplicate image review was performed using perceptual hash checks across train/val/test pairs.
+- The summary and example visuals are stored under `outputs/results/`.
 
-## Phase 3: Strengthen validation
+### Task 6: Report-ready image package
+Completed.
+- The key visuals were copied into `outputs/report_images/` for easier final-report assembly.
 
-### Task 6: Test on more real cropped samples
-- Use additional cropped images from the same dataset or external validation set.
-- Check if predictions remain stable across different image sources.
+## Remaining optional future work
 
-### Task 7: Add external validation review
-- Compare model performance on known external cell images.
-- Identify if the model is domain-specific to the TXL-PBC style.
+These are not required to finish the current project, but they would improve the tool further for broader use.
 
-### Task 8: Review class imbalance handling
-- Reassess whether the current augmentation and weighting are enough.
-- Check whether Platelet and WBC recall can be improved further.
+### Task 7: Folder-based prediction script
+- Add a script that takes a folder of images and saves a CSV of image name, predicted class, and confidence.
 
-## Phase 4: Improve reporting quality
+### Task 8: Confidence threshold / uncertainty flag
+- Mark low-confidence predictions as uncertain instead of forcing a class label.
 
-### Task 9: Add a model comparison table
-- Include accuracy, macro F1, parameter count, training time, and memory use.
-- Use this as the final report table.
+### Task 9: Lightweight frontend demo
+- Create a simple Streamlit or Flask interface for upload and prediction.
 
-### Task 10: Add richer result plots
-- Create bar charts for per-class recall and F1.
-- Save confusion matrices for each model in a cleaner final-output format.
+### Task 10: External validation review
+- Test on additional real-world cropped images beyond the TXL-PBC dataset to assess generalization.
 
-### Task 11: Add a final project summary page
-- Prepare a short markdown or report section summarizing:
-  - dataset
-  - preprocessing
-  - models compared
-  - best model
-  - final recommendation
+### Task 11: More polished reporting UI
+- Add a cleaner final webpage or markdown summary for viva/demo presentation.
 
-## Phase 5: Optional advanced improvements
-
-### Task 12: Add explainability
-- Use Grad-CAM or similar tools to highlight which image region influenced the decision.
-- Helpful for understanding whether the model is focusing on the actual cell rather than background noise.
-- For this project specifically, this means a script similar to src/gradcam.py that loads a checkpoint and saves overlays for representative RBC/WBC/Platelet crops.
-
-### Task 13: Add a live demo workflow
-- Prepare a presentation-ready demo where a user uploads a cell image and sees the prediction instantly.
-- This is useful for viva or project demonstration.
-
-## Phase 6: Reporting and model comparison
-
-### Task 14: Add model comparison metrics with runtime and memory
-- Extend the evaluation pipeline to merge per-model training time and peak GPU memory into the final comparison output.
-- Save the final table with columns including Model, Macro-F1, Macro-AUC, Accuracy, Params(M), Training Time, and Peak GPU Memory.
-
-### Task 15: Add combined confusion matrix comparison figure
-- Generate one side-by-side figure with a confusion matrix for each model to simplify visual comparison.
-- Use the same normalisation and shared color scale across all subplots.
-
-### Task 16: Add loss-curve visualisation
-- Read the CSV log files from outputs/logs and plot train/validation loss for all three backbones.
-- Save a single figure that clearly labels each model's curve.
-
-### Task 17: Check model metadata consistency
-- Confirm that the YOLO label order remains 0=WBC, 1=RBC, 2=Platelet in config.yaml and crop_dataset.py.
-- Confirm the MobileNet name string is consistently mobilenet_v3_small across all script entry points.
-- Flag any mismatch instead of silently changing project behavior.
-
-## Recommended priority order
+## Recommended priority order for future work
 
 1. Folder-based prediction script
-2. Confidence threshold and uncertainty handling
-3. Simple Streamlit demo
-4. Better validation on more sample images
-5. Final report and comparison table improvements
+2. Confidence threshold handling
+3. Simple demo app
+4. External validation on additional images
+5. Additional clinical-style reporting polish
 
 ## Final recommendation
 
-The project is already strong enough to finish as a working blood-cell classification system. The enhancements above are best used to make it more usable, more polished, and more convincing in a report or demo, rather than as required fixes.
+The project has already reached a strong completion point for the assignment. The enhancements above are now mostly optional refinements for future usability and deployment readiness, rather than required fixes for the current project.
