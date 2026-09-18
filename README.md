@@ -175,14 +175,21 @@ This writes evidence files such as:
 python src/gradcam.py --config configs/config.yaml --model efficientnet_b0
 ```
 
-This is an optional enhancement and is not part of the core training/evaluation pipeline.
+This optional enhancement generates overlaid class-activation heatmaps saved as:
+
+- `outputs/results/gradcam_WBC_correct.png`
+- `outputs/results/gradcam_RBC_correct.png`
+- `outputs/results/gradcam_Platelet_correct.png`
+
+The same files are also copied into `outputs/report_images/` for final reporting. The overlay blending uses a visible Jet-style heatmap on the original crop so the attention regions are clearly interpretable.
 
 ## Notes
 
 - Class imbalance handling is already built into the dataset and loss setup through weighted sampling and class-aware loss weighting.
 - Checkpoint selection is driven by validation macro-F1, not raw accuracy.
 - The project is implemented as a PyTorch transfer-learning pipeline rather than a Keras/TensorFlow pipeline.
-- The added evaluation and reporting scripts are meant to improve final reporting and comparison quality without changing the model-training behavior itself.
+- The evaluation and reporting scripts are intended to improve final reporting and comparison quality without changing the model-training behavior itself.
+- The Grad-CAM script produces visible heatmap overlays for representative crop samples, and the generated images are included in `outputs/report_images/` for documentation and report assembly.
 
 ## Model comparison summary
 

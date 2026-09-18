@@ -2,105 +2,67 @@
 
 ## Current status
 
-The pipeline is already functional and the repo is in a strong state for finishing the project:
+The project is now effectively complete for the current assignment and the core deliverables have been produced.
 
-- The workspace has no reported Python errors.
-- The dataset has already been processed and class folders exist under `data/processed/train`, `data/processed/val`, and `data/processed/test`.
-- A batch-level smoke test confirmed that the EfficientNet-B0 model can load and process data successfully.
-- The project is now being narrowed to a practical final delivery plan, rather than broad benchmarking for every model.
+- The dataset has been processed and class folders exist under `data/processed/train`, `data/processed/val`, and `data/processed/test`.
+- All three backbones were trained and evaluated: EfficientNet-B0, MobileNetV3-Small, and DenseNet121.
+- The final model comparison table and confusion matrix figures were generated successfully.
+- The near-duplicate audit and cleanup workflow was completed, with the deduplication summary saved under `outputs/results/`.
+- Grad-CAM overlays were fixed and regenerated, and the visual outputs were copied into `outputs/report_images/`.
+- Baseline outputs were preserved under `outputs_pre_dedup/` so before/after comparison remains available.
 
 ## Key decision
 
-The main model for this project will be EfficientNet-B0. The other backbones are optional comparison experiments, not mandatory deliverables.
+EfficientNet-B0 is the primary recommendation for this project because it achieved the strongest performance on the held-out test set.
 
-This is the right choice because:
-- it is already the preferred backbone in the repository
-- it is a strong transfer-learning model for this task
-- it keeps the project realistic and finishable within time
+The other backbones remain useful for comparison, but the final recommendation should focus on EfficientNet-B0 unless a specific requirement calls for broader comparison.
 
-## Phase 1: Final data verification
+## Completed phases
 
-- Confirm that the required TXL-PBC files are present under `data/raw/images` and `data/raw/labels`.
-- Re-check class counts after cropping and verify the distribution is reasonable.
-- Ensure the split files are aligned and there is no data leakage between train/val/test.
-- Verify that the class ordering in `configs/config.yaml` matches the YOLO labels.
+### Phase 1: Final data verification
 
-## Phase 2: Main training run (priority)
+Completed.
+- The split files were checked and the active runtime split is the TXL-PBC explicit 70/20/10 split.
+- Class ordering was reviewed and kept consistent with the YOLO labels.
+- Duplicate-image checks were performed and the deduplication summary saved.
 
-Run the primary training job in a long-running terminal so it is not interrupted:
+### Phase 2: Main training runs
 
-```bash
-source venv/bin/activate
-python src/train.py --config configs/config.yaml --model efficientnet_b0
-```
+Completed.
+- EfficientNet-B0, MobileNetV3-Small, and DenseNet121 were all trained successfully.
+- Best checkpoints were written to `outputs/checkpoints/`.
+- Logs were recorded under `outputs/logs/`.
 
-Checklist:
-- checkpoint saved in `outputs/checkpoints/`
-- logs written to `outputs/logs/`
-- best model chosen on validation macro-F1
-- training time and memory recorded
+### Phase 3: Evaluation
 
-## Phase 3: Primary evaluation
+Completed.
+- Each checkpoint was evaluated on the held-out test set.
+- Per-model confusion matrices and JSON reports were saved under `outputs/results/`.
+- The combined confusion matrix figure was generated successfully.
 
-Run the evaluation for the chosen main model:
+### Phase 4: Comparison and reporting support
 
-```bash
-python src/evaluate.py --config configs/config.yaml --model efficientnet_b0
-```
+Completed.
+- The model comparison table was created.
+- The loss curves were generated.
+- Grad-CAM overlays were regenerated with visible heatmap blending.
+- Report-ready images were consolidated in `outputs/report_images/`.
 
-Collect:
-- accuracy
-- macro precision
-- macro recall
-- macro F1
-- confusion matrix
-- per-class recall for WBC and Platelet
+## Final report package
 
-## Phase 4: Optional comparison run
-
-Only do this if the assignment or supervisor expects a model comparison.
-
-Run MobileNetV3-Small as a lightweight comparison:
-
-```bash
-python src/train.py --config configs/config.yaml --model mobilenet_v3_small
-python src/evaluate.py --config configs/config.yaml --model mobilenet_v3_small
-```
-
-DenseNet121 is optional and should only be trained if time allows.
-
-## Phase 5: Backup and transfer workflow
-
-Because checkpoints and logs are not tracked in GitHub, store them outside the repo when training is complete.
-
-Recommended workflow:
-- keep `outputs/` in the project for active use
-- zip or copy `outputs/checkpoints`, `outputs/logs`, and `outputs/results` to Google Drive later
-- do not commit these files to GitHub
-
-Example:
-
-```powershell
-Compress-Archive -Path .\outputs\* -DestinationPath .\project_outputs_backup.zip -Force
-```
-
-Then later move the zip to Google Drive.
-
-## Phase 6: Final report
-
-Prepare the final write-up with:
-- dataset overview and preprocessing
-- class imbalance handling strategy
-- EfficientNet-B0 model design and training process
-- evaluation metrics and confusion matrix interpretation
-- final recommendation and limitations
+The project is ready for the final write-up with:
+- dataset overview and preprocessing summary
+- class imbalance handling
+- model comparison results
+- best-model recommendation
+- duplicate-audit and data-cleaning discussion
+- Grad-CAM visual evidence
+- final limitations and future work
 
 ## Final recommendation
 
-The project should be completed around the EfficientNet-B0 pipeline first. The extended comparison across all three models is optional and should only be done if the task specifically requires it.
-
-This keeps the work realistic, reduces wasted training time, and still gives a strong final result.
+The project is complete as a strong research and reporting deliverable. It is not a clinical deployment system, but it is a working, documented, and evidence-backed blood-cell classifier for the current dataset.
 
 ## Immediate next step
 
-The next action is to train the EfficientNet-B0 model, evaluate it on the held-out test set, and only then decide whether any comparison runs are necessary.
+The remaining task is to finalize the report narrative and ensure that the generated outputs in `outputs/` and `outputs/report_images/` are the ones used in the final submission.
