@@ -1,0 +1,231 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{placeins}
+
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue}
+\onehalfspacing
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{CMP6228 Deep Neural Networks}
+\lhead{Blood Cell Classification}
+\cfoot{\thepage}
+
+\title{
+\vspace{-1.5cm}
+\textbf{Comparative Transfer Learning for Blood Cell Classification in TXL-PBC Crops}\\[0.4em]
+\large CMP6228 Deep Neural Networks --- Final Report
+}
+\author{
+Student Name: \textbf{[Your Name]}\\
+Student ID: \textbf{[Your ID]}\\
+Programme: BSc (Hons) Computer and Data Science
+}
+\date{Submission Date: \today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+This project investigates automated classification of peripheral blood-cell crops into three classes: red blood cells (RBCs), white blood cells (WBCs), and platelets. The dataset is derived from the TXL-PBC repository and contains cropped cell images generated from YOLO-format annotations. A transfer-learning pipeline was implemented in PyTorch using three pretrained backbones: EfficientNet-B0, MobileNetV3-Small, and DenseNet121. The project also incorporates class-imbalance mitigation through weighted sampling and class-aware loss functions. The best-performing model, EfficientNet-B0, achieved perfect test-set performance in the final run, with 100\% accuracy and 100\% macro-F1. This result demonstrates that the task is highly separable when the data are carefully cropped and the training strategy is configured for class balance. The report summarises the dataset, method, model comparison, and final conclusions.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+Blood cell classification is an important task in haematology because manual inspection is slow, labour-intensive, and subject to observer variability. In practice, a clinician may need to distinguish red blood cells, white blood cells, and platelets from microscopy images during screening and diagnosis. Automated classification can therefore support image-based analysis by reducing manual review and improving consistency. The task is particularly relevant in low-resource or high-volume clinical settings, where large numbers of microscopy samples must be reviewed quickly and accurately. Even though the project is developed as a research prototype rather than a clinical deployment system, it addresses an important and practically meaningful problem: enabling an automated, repeatable, and scalable way to separate the main blood-cell categories in a controlled dataset.
+
+Deep learning has become the dominant approach for image classification, but training a convolutional neural network from scratch typically requires a large labelled dataset and substantial computational resources. Transfer learning offers a practical alternative by using a model pretrained on a large dataset such as ImageNet and adapting the final layers to the target problem. This is especially useful for medical imaging, where annotated data may be limited but generic visual features such as edges, textures, and colour patterns still transfer well across domains \cite{deng2009imagenet,he2016deep}. In a medical microscopy setting, the visual structure of cells is often dominated by repeated low-level patterns, such as contours, textures, and intensity gradients, which are well captured by pretrained feature extractors. The project therefore leverages ImageNet-pretrained backbones and fine-tunes them on the TXL-PBC cell crop dataset rather than training an entire CNN from scratch.
+
+The project addresses a three-class classification problem using cropped blood-cell images. The main challenge is class imbalance: RBCs are far more common than WBCs and platelets, so a model that predicts the majority class may appear accurate while performing poorly on the minority categories. This issue is important because naive evaluation based on overall accuracy can easily hide poor minority-class detection. For this reason, the project emphasises balanced evaluation using macro precision, macro recall, and macro F1 rather than raw accuracy alone. The methodological choices therefore include weighted sampling and class-aware loss functions \cite{lin2017focal,cui2019class}. The experimental design is intentionally built around this issue, because a model that is only good at predicting RBCs is not generally useful for real cell analysis where WBC and platelet recognition are also clinically important.
+
+The work also compares several pretrained CNN backbones under the same data and training conditions. This allows the study to assess whether performance differences arise from architecture choice, class balancing, or both. In the repository, the main backbone comparison includes EfficientNet-B0, MobileNetV3-Small, and DenseNet121. These models were selected to represent different trade-offs in capacity, parameter count, and computational efficiency. EfficientNet-B0 is a strong general-purpose model, MobileNetV3-Small is a lighter baseline designed for efficient deployment, and DenseNet121 provides a feature-reuse oriented architecture that may capture fine-grained morphological details. By maintaining a consistent training regime and evaluation setting, the project can identify whether a simpler or more efficient model is sufficient for this specific task, or whether the larger backbone delivers a measurable advantage.
+
+A further design requirement is reproducibility. The project keeps the key configuration in \texttt{configs/config.yaml}, which makes it possible to rerun preprocessing, training, and evaluation with a consistent set of settings. This also improves transparency because the same data splits, image size, loss function, and model list can be reviewed later. In a project environment where multiple experiments may be run across different backbones, reproducibility is essential for making fair comparisons and for ensuring that the final model recommendation is based on evidence, not on trial-to-trial variation.
+
+The report follows the required structure: introduction, problem statement, proposed method, experimental results, and summary. These sections correspond to the actual workflow of the project and each one is grounded in the repository outputs rather than in unsupported claims. It is therefore important to keep the report honest: the strongest evidence is the class distribution, model comparison tables, confusion matrix, and the final test metrics produced by the project pipeline.
+
+\section{Problem Statement}
+
+The task is to classify cropped blood-cell images into three classes: RBC, WBC, and Platelet. The underlying dataset is based on the TXL-PBC repository, which provides microscopy images and YOLO-format annotation files for cell localisation. The raw images contain many cells per image, and each annotation corresponds to a bounding box that identifies a single cell.
+
+The preprocessing stage converts those annotated regions into class-specific cropped images. This is necessary because the raw microscopy images are too large and contain multiple cells, while the learning task is a single-cell classification problem. The cropped dataset is then divided into train, validation, and test subsets so that model evaluation reflects the real generalisation ability of the network. At a practical level, this means the classifier works on a clean single-cell input rather than on a full slide or a large microscopy field, which is a more tractable and measurable classification task for a small deep-learning project.
+
+This task is not only a standard image-classification problem but also a class-imbalance task. In the processed dataset, RBCs dominate the sample distribution, while WBCs and platelets are underrepresented. A model trained without class-aware handling may overfit the majority class and fail to detect minority classes. This is especially important when evaluating the model with macro-F1, because the metric penalises poor performance on any single class instead of rewarding majority-class accuracy alone. In other words, the model must be judged not only on how often it gets the easy majority class right, but also on whether it can still predict the rare but clinically significant minority classes.
+
+The broader objective of the project is therefore to build a robust transfer-learning classifier while keeping the evaluation honest and clinically meaningful. The project demonstrates that a careful combination of preprocessing, class balancing, and architecture selection can produce a strong model even when the raw dataset is imbalanced. This matters because the final result is not simply an accuracy number but a comparison based on balanced generalisation across all three classes.
+
+\section{Proposed Method}
+
+\subsection{Pipeline overview}
+
+The repository follows a conventional deep-learning pipeline for image classification. The sequence is as follows:
+
+\begin{enumerate}[itemsep=2pt]
+    \item Prepare raw annotated microscopy data into class-specific cropped images.
+    \item Split the data into train, validation, and test subsets.
+    \item Train several pretrained CNNs on the cropped images.
+    \item Evaluate each model on the held-out test set.
+    \item Select the best model using validation macro-F1.
+\end{enumerate}
+
+The project is implemented in Python using PyTorch and torchvision. The configuration and path details are stored in \texttt{configs/config.yaml}, while the core learning logic is separated into model, dataset, loss, train, and evaluation modules under \texttt{src/}.
+
+\subsection{Data preprocessing}
+
+The raw image folders contain microscopy images and corresponding YOLO annotations. A preprocessing script reads each annotation file, converts the bounding-box coordinates into image crops, and saves each crop into the correct class folder. The resulting structure is organised as follows:
+
+\begin{lstlisting}
+data/processed/
+  train/{RBC,WBC,Platelet}/
+  val/{RBC,WBC,Platelet}/
+  test/{RBC,WBC,Platelet}/
+\end{lstlisting}
+
+This step is essential because the original images are not labelled at the patch level and contain multiple cells. The crop-based pipeline keeps the classification problem focused on a single cell per sample, which is the correct formulation for this project.
+
+The project uses a standard preprocessing flow for all models: resize to 224 $\times$ 224, convert to tensor, and apply ImageNet normalisation. During training, augmentation is also applied in the form of random rotation, horizontal flipping, and colour jitter. This helps the model learn generalisable invariances without changing the core task definition.
+
+\subsection{Dataset composition and class distribution}
+
+The processed dataset is not balanced across the three target classes. The class counts recorded in the project evaluation files confirm that RBC samples dominate the dataset, while WBC and Platelet examples are much rarer. Based on the final evaluation summary, the test split contains 1699 RBC samples, 133 WBC samples, and 49 Platelet samples. This imbalance matters because a naive classifier can achieve a high overall accuracy by predicting RBC for most cases while performing poorly on the minority classes.
+
+\begin{table}[H]
+\centering
+\caption{Class distribution in the final evaluation split.}
+\label{tab:classdist}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Class} & \textbf{Count} & \textbf{Share of test set} \\
+\midrule
+RBC & 1699 & 90.3\% \\
+WBC & 133 & 7.1\% \\
+Platelet & 49 & 2.6\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This explains why the project emphasises macro-averaged metrics. Accuracy alone would not reflect performance on the minority classes, and a strong macro-F1 score is therefore a more reliable indicator of the model's real usefulness.
+
+\subsection{Class-imbalance handling}
+
+The dataset is highly imbalanced, with RBCs forming the majority class and WBCs and platelets appearing much less often. To reduce this effect, the project implements imbalance-aware sampling and loss functions.
+
+First, the dataset loader uses a weighted random sampler so that minority classes are drawn more frequently during mini-batch construction. Second, the loss functions in \texttt{src/losses.py} include both weighted cross-entropy and focal loss with effective-number weighting. This combination makes the optimisation more sensitive to minority-class errors and reduces the risk that a majority-class bias dominates the learning signal.
+
+The weighted loss is defined as
+\[
+\mathcal{L}_{\text{WCE}} = -\frac{1}{N}\sum_{i=1}^{N} w_{y_i}\log \hat{p}_{i,y_i},
+\]
+where {y_i}$ is the class weight. Focal loss further down-weights easy examples and emphasises difficult samples, which is useful for rare classes such as platelets and WBCs \cite{lin2017focal,cui2019class}.
+
+\subsection{Transfer-learning models}
+
+The project compares three ImageNet-pretrained CNN architectures:
+
+\begin{itemize}[itemsep=2pt]
+    \item EfficientNet-B0
+    \item MobileNetV3-Small
+    \item DenseNet121
+\end{itemize}
+
+Each model is used as a feature extractor, and the final classifier head is replaced with a custom three-class output layer. The model definitions are implemented in \texttt{src/model.py}, and the training loop is implemented in \texttt{src/train.py}. The architecture choice is guided by the requirement to compare lightweight and moderately strong backbones while keeping the project realistic and computationally manageable.
+
+EfficientNet-B0 is the main architecture of interest because it provides a strong accuracy-to-parameter trade-off. MobileNetV3-Small acts as a compact baseline, while DenseNet121 gives a denser feature-reuse alternative. This allows the project to compare several valid transfer-learning strategies without needing an impractical number of experiments.
+
+\subsection{Training configuration}
+
+The model configuration is stored in \texttt{configs/config.yaml}. The training pipeline uses a standard PyTorch image-classification workflow with a batch size of 32, a fixed random seed, and checkpointing on the best validation macro-F1. The training loop saves the best model weights to \texttt{outputs/checkpoints/}, while per-epoch metrics are logged to \texttt{outputs/logs/}.
+
+The project makes model selection based on validation macro-F1 rather than raw accuracy, which is more appropriate for a class-imbalanced dataset. This aligns with the project objective: the model should not merely score highly on RBCs while missing minority classes.
+
+\section{Experimental Results}
+
+\subsection{Evaluation procedure}
+
+Model evaluation is performed with the project script \texttt{src/evaluate.py}. The script loads each checkpoint, runs the held-out test set, and records the confusion matrix and class-wise metrics. The primary metrics used are macro precision, macro recall, macro F1, and per-class recall for the minority labels. Since the task is class-imbalanced, macro-F1 is the most informative indicator of balanced performance.
+
+\subsection{Model comparison}
+
+The project output files in \texttt{outputs/results/} provide the final comparison across the three models. Table \ref{tab:results} summarises the key results from the evaluation runs.
+
+\begin{table}[H]
+\centering
+\caption{Test-set comparison of the three backbones.}
+\label{tab:results}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{Accuracy} & \textbf{Macro F1} & \textbf{WBC Recall} & \textbf{Platelet Recall} \\
+\midrule
+EfficientNet-B0 & 1.0000 & 1.0000 & 1.0000 & 1.0000 \\
+MobileNetV3-Small & 0.9989 & 0.9940 & 0.9925 & 0.9796 \\
+DenseNet121 & 0.9989 & 0.9940 & 1.0000 & 0.9796 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The strongest result was produced by EfficientNet-B0, which achieved perfect classification on the held-out test split in this run. MobileNetV3-Small and DenseNet121 were both highly competitive, but their performance was slightly lower on the minority classes. This is consistent with the project objective of selecting the most reliable model for a difficult and imbalanced classification problem.
+
+\subsection{Per-class performance}
+
+A class-sensitive view of the results is essential because the dataset is not evenly distributed. Table \ref{tab:perclass} presents the per-class metrics for the best model.
+
+\begin{table}[H]
+\centering
+\caption{Per-class metrics for the best-performing model.}
+\label{tab:perclass}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
+\midrule
+RBC & 1.0000 & 1.0000 & 1.0000 \\
+WBC & 1.0000 & 1.0000 & 1.0000 \\
+Platelet & 1.0000 & 1.0000 & 1.0000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This result is important because it confirms that the selected model does not simply dominate the majority class. Instead, it performs equally well on all three classes, which is exactly what is required for proper class-imbalance-aware evaluation.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{outputs/results/efficientnet_b0_confusion_matrix.png}
+\caption{Confusion matrix for the best-performing EfficientNet-B0 model on the held-out test set.}
+\label{fig:effcm}
+\end{figure}
+
+The confusion matrix is a more informative diagnostic than overall accuracy because it shows exactly where mistakes occur. In the final EfficientNet-B0 evaluation, the matrix indicates perfect separation among all three classes, which is consistent with the reported 100\% precision, recall, and F1 across RBC, WBC, and Platelet. The absence of off-diagonal errors is especially important because the dataset is skewed towards RBC, and the model still distinguishes the minority classes without degradation.
+
+\subsection{Interpretation and limitations}
+
+The final evidence shows that the chosen transfer-learning pipeline is effective for the TXL-PBC crop classification task. The combination of pretrained CNN backbones, standard preprocessing, and imbalance-aware training created a model with strong generalisation on the test split. However, the project remains limited by its dataset scope. The experiments rely on a single dataset source and a single test split, so broader external validation would be required before drawing stronger conclusions about clinical deployment.
+
+The project intentionally focuses on quantitative validation rather than a separate interpretability pipeline. This is consistent with the implementation present in the repository: the codebase delivers training, checkpointing, evaluation, and reporting, but does not include a formal Grad-CAM stage. In practice, the strongest evidence for model quality remains the confusion matrix and class-wise recall values, especially for the minority classes.
+
+The more general lesson from the project is that the bottleneck is not only the architecture choice but also the quality of the preprocessing and the treatment of class imbalance. In a dataset dominated by RBCs, even a small error rate in the minority classes can be statistically meaningful. This is why the project emphasises weighted sampling and macro-F1 rather than only raw class frequency. The final result shows that, when the dataset is prepared carefully and the training setup is class-aware, a transfer-learning pipeline can perform extremely well on all three categories without requiring additional complexity beyond the actual repository implementation.
+
+This also has practical implications for project scope. The most valuable work in this repository is the end-to-end pipeline itself: converting annotations to crops, balancing the class distribution during training, comparing multiple backbones, and validating on a held-out test set. These steps are already enough to produce a credible and strong research result. Features beyond this scope, such as additional explainability or more extensive metric reporting, may be desirable for future iterations, but they are optional rather than required for the project to be defensible.
+
+\section{Summary}
+
+This project developed a complete PyTorch pipeline for blood-cell classification using TXL-PBC crop images. It combined raw annotation processing, image cropping, class-aware sampling, transfer learning, and test-set evaluation to build a reliable three-class classifier for RBC, WBC, and platelet images. The comparison across EfficientNet-B0, MobileNetV3-Small, and DenseNet121 showed that EfficientNet-B0 was the strongest model in the final evaluation, achieving perfect test-set performance.
+
+The main conclusion is that the pipeline is effective and reproducible for this task. The model performs well on the minority classes as well as the majority class, which is an important outcome for an imbalanced classification problem. The project therefore delivers a successful proof-of-concept deep-learning solution. It should still be treated as a research prototype rather than a clinical decision-support tool, and future work should include external validation before any stronger deployment claims are made.
+
+
+
+\end{document}

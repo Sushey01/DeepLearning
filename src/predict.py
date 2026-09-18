@@ -1,11 +1,19 @@
 import argparse
 import csv
+import sys
 from io import BytesIO
 from pathlib import Path
 
 import torch
 from PIL import Image
 from torchvision import transforms
+
+SRC_DIR = Path(__file__).resolve().parent
+ROOT_DIR = SRC_DIR.parent
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from model import build_model
 from utils import get_device, load_config
@@ -44,15 +52,15 @@ def preprocess_image_bytes(image_bytes: bytes, cfg: dict):
 
 def predict_image(image_path: str, model, classes: list, cfg: dict, device, threshold: float = 0.0):
     x = preprocess_image(image_path, cfg).unsqueeze(0).to(device)
-    return predict_tensor(x, classes, cfg, device, image_path, threshold)
+    return predict_tensor(model, x, classes, cfg, device, image_path, threshold)
 
 
 def predict_image_bytes(image_bytes: bytes, model, classes: list, cfg: dict, device, threshold: float = 0.0, image_name: str = "uploaded_image"):
     x = preprocess_image_bytes(image_bytes, cfg).unsqueeze(0).to(device)
-    return predict_tensor(x, classes, cfg, device, image_name, threshold)
+    return predict_tensor(model, x, classes, cfg, device, image_name, threshold)
 
 
-def predict_tensor(x, classes: list, cfg: dict, device, image_name: str, threshold: float = 0.0):
+def predict_tensor(model, x, classes: list, cfg: dict, device, image_name: str, threshold: float = 0.0):
     with torch.no_grad():
         logits = model(x)
         probs = torch.softmax(logits, dim=1)[0]

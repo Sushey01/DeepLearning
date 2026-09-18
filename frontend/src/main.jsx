@@ -7,19 +7,57 @@ const classNames = ['WBC', 'RBC', 'Platelet']
 function App() {
   const [image, setImage] = useState(null)
   const [preview, setPreview] = useState('')
-  const [result, setResult] = useState({ label: 'Waiting for image', confidence: null })
+  const [threshold, setThreshold] = useState('0.6')
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState({
+    label: 'Waiting for image',
+    confidence: null,
+    probabilities: {},
+    warning: '',
+  })
 
-  function handleImageChange(event) {
+  async function handleImageChange(event) {
     const file = event.target.files?.[0]
     if (!file) return
 
     const url = URL.createObjectURL(file)
     setPreview(url)
     setImage(file)
+    setLoading(true)
+    setResult({ label: 'Analyzing...', confidence: null, probabilities: {}, warning: '' })
 
-    const predicted = classNames[Math.floor(Math.random() * classNames.length)]
-    const confidence = (Math.random() * 0.35 + 0.65).toFixed(2)
-    setResult({ label: predicted, confidence })
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('threshold', threshold)
+
+    try {
+      const response = await fetch('http://localhost:5000/predict', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorJson = await response.json().catch(() => ({}))
+        throw new Error(errorJson.error || 'Prediction failed')
+      }
+
+      const payload = await response.json()
+      setResult({
+        label: payload.predicted_class || 'Unknown',
+        confidence: payload.confidence != null ? Number(payload.confidence).toFixed(4) : null,
+        probabilities: payload.probabilities || {},
+        warning: payload.warning || '',
+      })
+    } catch (error) {
+      setResult({
+        label: 'Error',
+        confidence: null,
+        probabilities: {},
+        warning: error.message || 'Could not reach the prediction API.',
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -37,9 +75,22 @@ function App() {
           <section className="upload-panel">
             <label className="upload-box" htmlFor="image-upload">
               <span className="upload-icon">⤴</span>
-              <span>Upload blood cell image</span>
+              <span>{loading ? 'Analyzing image...' : 'Upload blood cell image'}</span>
             </label>
             <input id="image-upload" type="file" accept="image/*" onChange={handleImageChange} />
+
+            <div className="threshold-control">
+              <label htmlFor="threshold">Confidence threshold</label>
+              <input
+                id="threshold"
+                type="number"
+                min="0"
+                max="1"
+                step="0.05"
+                value={threshold}
+                onChange={(event) => setThreshold(event.target.value)}
+              />
+            </div>
 
             <div className="info-list">
               <div>
@@ -64,6 +115,14 @@ function App() {
                   <p className="result-label">Prediction</p>
                   <h2>{result.label}</h2>
                   {result.confidence && <span className="confidence">Confidence: {result.confidence}</span>}
+                  {result.warning && <div className="warning-box">{result.warning}</div>}
+                  {Object.keys(result.probabilities).length > 0 && (
+                    <ul className="probability-list">
+                      {Object.entries(result.probabilities).map(([label, value]) => (
+                        <li key={label}><span>{label}</span><strong>{Number(value).toFixed(4)}</strong></li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </>
             ) : (
