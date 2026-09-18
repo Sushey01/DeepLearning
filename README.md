@@ -26,20 +26,24 @@ blood-cell-classification/
 ├── configs/
 │   └── config.yaml         # dataset paths, class list, model names, and hyperparameters
 ├── src/
-│   ├── crop_dataset.py     # raw images + YOLO boxes -> cropped per-class dataset
-│   ├── dataset.py          # PyTorch Dataset, transforms, and weighted sampler
-│   ├── model.py            # EfficientNet-B0 / MobileNetV3-Small / DenseNet121 builders
-│   ├── losses.py           # class-weighted CE and focal loss
-│   ├── train.py            # training loop, checkpointing on best validation macro-F1
-│   ├── evaluate.py         # evaluation, confusion matrices, comparison output, runtime/memory metadata
-│   ├── gradcam.py          # optional Grad-CAM heatmap overlay script
-│   ├── plot_model_results.py  # loss-curve plotting script
-│   ├── reporting.py        # summary text generation utilities
-│   └── utils.py            # config loading and shared helpers
+│   ├── crop_dataset.py             # raw images + YOLO boxes -> cropped per-class dataset
+│   ├── dataset.py                  # PyTorch Dataset, transforms, and weighted sampler
+│   ├── model.py                   # EfficientNet-B0 / MobileNetV3-Small / DenseNet121 builders
+│   ├── losses.py                  # class-weighted CE and focal loss
+│   ├── train.py                   # training loop, checkpointing on best validation macro-F1
+│   ├── evaluate.py                # evaluation, confusion matrices, comparison output, runtime/memory metadata
+│   ├── deduplicate_processed_dataset.py  # dry-run and optional cleanup of near-duplicate crops
+│   ├── gradcam.py                 # optional Grad-CAM heatmap overlay script
+│   ├── plot_model_results.py      # loss-curve plotting script
+│   ├── reporting.py               # summary text generation utilities
+│   └── utils.py                   # config loading and shared helpers
 ├── outputs/
-│   ├── checkpoints/       # saved model weights (best_<model_name>.pt)
-│   ├── logs/               # per-epoch CSV logs with loss/F1 and timing metadata
-│   └── results/            # confusion matrices, JSON reports, comparison figures, Grad-CAM outputs
+│   ├── checkpoints/               # saved model weights (best_<model_name>.pt)
+│   ├── logs/                      # per-epoch CSV logs with loss/F1 and timing metadata
+│   ├── results/                   # confusion matrices, JSON reports, comparison figures, dedup outputs
+│   └── report_images/             # report-ready visual evidence for final write-up
+├── outputs_pre_dedup/
+│   └── results/                   # preserved baseline outputs before deduplication cleanup
 ├── tests/
 │   ├── test_api_inference.py
 │   ├── test_enhancement_features.py
@@ -61,6 +65,27 @@ The project assumes the TXL-PBC YOLO annotation order is:
 - 2 = Platelet
 
 This is reflected in [configs/config.yaml](configs/config.yaml) and enforced in [src/crop_dataset.py](src/crop_dataset.py). The model name for MobileNetV3-Small is kept as `mobilenet_v3_small` throughout the project.
+
+### Split assignment
+
+The project uses the TXL-PBC split files in [data/raw/train.txt](data/raw/train.txt), [data/raw/val.txt](data/raw/val.txt), and [data/raw/test.txt](data/raw/test.txt) when they are present. In the current dataset these resolve to approximately 70/20/10 for train/val/test (882 / 252 / 126 image IDs), which is the active runtime split used by the pipeline.
+
+If the split files are missing, the fallback logic in [src/crop_dataset.py](src/crop_dataset.py) creates a random 70/15/15 image-level split. This fallback is only used when the explicit TXL-PBC split files are absent; it is not the current active setting for this project.
+
+### Near-duplicate audit and cleanup
+
+The project also includes a duplicate-image audit for processed crops. The script [src/deduplicate_processed_dataset.py](src/deduplicate_processed_dataset.py) checks perceptual-hash similarity for within-class images across train/val/test, reports pairwise counts, and saves montage examples for review.
+
+Usage:
+
+```bash
+python src/deduplicate_processed_dataset.py
+python src/deduplicate_processed_dataset.py --apply
+```
+
+- The default mode is a dry run and writes summary evidence to `outputs/results/`.
+- The `--apply` flag removes near-duplicate crops from the processed dataset after review.
+- Baseline outputs are preserved in `outputs_pre_dedup/` so the original results remain available for comparison.
 
 ## Setup and environment
 
@@ -128,8 +153,23 @@ These commands produce:
 - `outputs/results/confusion_matrices_all.png`
 - `outputs/results/loss_curves.png`
 - `outputs/results/comparison_table.json`
+- `outputs/results/<model>_confusion_matrix.png` for each backbone
 
-7. Run Grad-CAM on a trained checkpoint if explainability is desired:
+7. Review duplicate audit outputs and report-ready visuals before final reporting:
+
+```bash
+python src/deduplicate_processed_dataset.py
+```
+
+This writes evidence files such as:
+
+- `outputs/results/near_duplicate_examples.png`
+- `outputs/results/pairwise_phash/train_val_examples.png`
+- `outputs/results/pairwise_phash/train_test_examples.png`
+- `outputs/results/pairwise_phash/val_test_examples.png`
+- `outputs/report_images/` for a single, easy-to-reference image set for the final write-up
+
+8. Run Grad-CAM on a trained checkpoint if explainability is desired:
 
 ```bash
 python src/gradcam.py --config configs/config.yaml --model efficientnet_b0

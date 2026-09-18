@@ -98,8 +98,8 @@ def build_dataloaders(cfg: dict):
 
     sampler = build_weighted_sampler(train_ds)
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, sampler=sampler, num_workers=2)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=2)
-    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=2)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, sampler=sampler, num_workers=0)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=0)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=0)
 
     return train_loader, val_loader, test_loader, train_ds.class_counts()

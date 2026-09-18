@@ -9,3 +9,4 @@ pyyaml
 pillow
 tqdm
 flask
+pytest
