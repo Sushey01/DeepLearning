@@ -1,0 +1,57 @@
+# ---- Paths ----
+raw_images_dir: "data/raw/images"
+raw_labels_dir: "data/raw/labels"
+# Optional: text files listing which image filenames belong to which split.
+# The current TXL-PBC dataset includes explicit split files that resolve to
+# approximately 70/20/10 (train/val/test). If those files are missing,
+# crop_dataset.py falls back to a random 70/15/15 image-level split.
+split_files:
+  train: "data/raw/train.txt"
+  val: "data/raw/val.txt"
+  test: "data/raw/test.txt"
+
+processed_dir: "data/processed"
+checkpoints_dir: "outputs_post_dedup/checkpoints"
+logs_dir: "outputs_post_dedup/logs"
+results_dir: "outputs_post_dedup/results"
+
+# ---- Classes ----
+# Must match the class indices used in the YOLO label files (0,1,2,...).
+# For TXL-PBC the label order is: 0=WBC, 1=RBC, 2=Platelet.
+classes: ["WBC", "RBC", "Platelet"]
+
+# ---- Preprocessing ----
+image_size: 224
+imagenet_mean: [0.485, 0.456, 0.406]
+imagenet_std: [0.229, 0.224, 0.225]
+
+# ---- Augmentation ----
+augment:
+  rotation_degrees: 20
+  horizontal_flip_prob: 0.5
+  brightness_jitter: 0.2
+  contrast_jitter: 0.2
+  # extra augmentation passes applied only to minority classes when cropping
+  minority_classes: ["WBC", "Platelet"]
+  minority_oversample_factor: 3   # how many augmented copies to generate per minority crop
+
+# ---- Training ----
+batch_size: 32
+num_epochs: 30
+learning_rate: 0.0003
+weight_decay: 0.00001
+early_stopping_patience: 6
+
+# loss: "weighted_ce" or "focal"
+loss_type: "weighted_ce"
+focal_gamma: 2.0
+# effective number of samples beta (close to 1). Set null to use raw inverse frequency instead.
+effective_number_beta: 0.999
+
+# ---- Models to compare ----
+models:
+  - efficientnet_b0
+  - mobilenet_v3_small
+  - densenet121
+
+seed: 42

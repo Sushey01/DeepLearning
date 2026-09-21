@@ -1,0 +1,29 @@
+[
+  {
+    "Model": "efficientnet_b0",
+    "Macro-F1": 0.9895873832950678,
+    "Macro-AUC": 0.9999872199981586,
+    "Accuracy": 0.9971719457013575,
+    "Params(M)": 4.011391,
+    "Training Time": 1380.437352180481,
+    "Peak GPU Memory": 2833.5458984375
+  },
+  {
+    "Model": "mobilenet_v3_small",
+    "Macro-F1": 0.9951840385276918,
+    "Macro-AUC": 1.0,
+    "Accuracy": 0.9994343891402715,
+    "Params(M)": 1.520931,
+    "Training Time": 892.0383203029633,
+    "Peak GPU Memory": 542.96044921875
+  },
+  {
+    "Model": "densenet121",
+    "Macro-F1": 0.9923604106459051,
+    "Macro-AUC": 0.9999956054237096,
+    "Accuracy": 0.9983031674208145,
+    "Params(M)": 6.956931,
+    "Training Time": 1444.493085861206,
+    "Peak GPU Memory": 4121.96240234375
+  }
+]
