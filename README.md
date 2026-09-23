@@ -1,4 +1,4 @@
-# Blood Cell Classification (CMP6232)
+# Blood Cell Classification (CMP6228)
 
 This project trains a transfer-learning classifier for RBC / WBC / Platelet cell crops using the TXL-PBC dataset, comparing three backbones:
 
@@ -86,6 +86,7 @@ python src/deduplicate_processed_dataset.py --apply
 - The default mode is a dry run and writes summary evidence to `outputs/results/`.
 - The `--apply` flag removes near-duplicate crops from the processed dataset after review.
 - Baseline outputs are preserved in `outputs_pre_dedup/` so the original results remain available for comparison.
+- The recorded audit found 592 near-duplicate pairs across split combinations (382 train/validation, 168 train/test, and 42 validation/test), resulting in 694 crop images removed after clustering and cleanup.
 
 ## Setup and environment
 
@@ -202,4 +203,4 @@ The current project output is designed to compare the three backbone models on t
 - Training time
 - Peak GPU memory
 
-The final report should use the model with the strongest macro-F1 value as the primary recommendation, while using accuracy and efficiency as secondary checks.
+The final report uses macro-F1 as the primary comparison metric, with MobileNetV3-Small as the best-performing model on that basis. Differences between models are within a small number of test errors; see the final report for confidence intervals and the significance discussion.
