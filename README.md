@@ -1,4 +1,4 @@
-# Blood Cell Classification (CMP6232)
+# Blood Cell Classification (CMP6228)
 
 This project trains a transfer-learning classifier for RBC / WBC / Platelet cell crops using the TXL-PBC dataset, comparing three backbones:
 
@@ -91,6 +91,7 @@ python src/deduplicate_processed_dataset.py --apply
 
 - The default mode is a dry run and writes summary evidence to `outputs/results/`.
 - The `--apply` flag removes near-duplicate crops from the processed dataset after review.
+<<<<<<< HEAD
 - The duplicate audit identified 694 near-duplicate images and reduced the cleaned test set from 1,881 crops to 1,768 crops.
 - The project preserves both baseline and cleaned-data artifacts:
   - `outputs_pre_dedup/` = original pre-cleanup results
@@ -103,6 +104,10 @@ The cleaned dataset counts are:
 | Train | 901 | 10,854 | 382 | 12,137 |
 | Validation | 252 | 3,180 | 112 | 3,544 |
 | Test | 127 | 1,593 | 48 | 1,768 |
+=======
+- Baseline outputs are preserved in `outputs_pre_dedup/` so the original results remain available for comparison.
+- The recorded audit found 592 near-duplicate pairs across split combinations (382 train/validation, 168 train/test, and 42 validation/test), resulting in 694 crop images removed after clustering and cleanup.
+>>>>>>> b3c643e59e8d705a782d36da131a2b73631f8808
 
 ## Setup and environment
 
@@ -241,4 +246,4 @@ Verified cleaned-data results are:
 
 The best post-dedup model is MobileNetV3-Small, with the strongest macro-F1 and near-perfect AUC on the cleaned test set. The original pre-cleanup outputs remain available for comparison and should not be confused with the cleaned-data retraining results.
 
-The final report should use the model with the strongest macro-F1 value as the primary recommendation, while using accuracy and efficiency as secondary checks.
+The final report uses macro-F1 as the primary comparison metric, with MobileNetV3-Small as the best-performing model on that basis. Differences between models are within a small number of test errors; see the final report for confidence intervals and the significance discussion.

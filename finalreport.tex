@@ -204,7 +204,11 @@ The pHash audit found near-duplicate pairs in every split combination: 382 betwe
 
 \paragraph{Cleaned dataset and retraining.} The flagged crops were removed, leaving 12,137 training, 3,544 validation and 1,768 test crops (test: 127 WBC, 1,593 RBC, 48 platelet). All three models were retrained from their ImageNet initialisation and re-evaluated with the settings in Table~\ref{tab:hyper}; the pre-cleanup checkpoints and results were preserved separately. The two evaluations therefore use different test sets (1,881 and 1,768 crops).
 
+<<<<<<< HEAD
 The audit has limits. pHash is not invariant to flips or rotations. Comparisons were within class only, so near-identical crops with different labels are not flagged; conversely, several example pairs in Appendix~\ref{app:audit} differ visibly in staining or shape, so 694 is best read as an upper bound. Duplicates across splits despite distinct filenames may reflect overlap between the four integrated collections, but this was not tested, and hashing was done on crops rather than whole images.
+=======
+The pHash audit found near-duplicate pairs across every split combination: 382 pairs between train and validation, 168 between train and test, and 42 between validation and test, for 592 pair matches in total. The subsequent clustering and cleanup removed 694 crop images while retaining one representative per near-duplicate group. The removals were heavily concentrated in RBC (675 of 694, or 97\%), consistent with the low morphological diversity of that class, with only 18 WBC and 1 Platelet image affected. Table \ref{tab:dataset} in Section 2 reports the resulting, cleaned class counts. All three models were retrained from scratch on this cleaned dataset; pre-cleaning checkpoints and results were preserved separately for comparison rather than discarded.
+>>>>>>> b3c643e59e8d705a782d36da131a2b73631f8808
 
 \subsection{Model Architectures}
 
