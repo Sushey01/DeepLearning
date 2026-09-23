@@ -4,11 +4,13 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{geometry}
-\geometry{margin=1in}
+\geometry{margin=1in, headheight=34pt, headsep=14pt}
 \usepackage{graphicx}
+\graphicspath{{images/}{outputs/results/}{report_images/}{./}} % figures may live in images/ or report_images/
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{amsmath,amssymb}
+\usepackage[round,authoryear]{natbib} % Harvard-style in-text citations
 \usepackage{hyperref}
 \usepackage{float}
 \usepackage{caption}
@@ -30,29 +32,50 @@
 
 \onehalfspacing
 
+% ---------- Helper macros ----------
+\newcommand{\includecode}[2]{%
+  \IfFileExists{#1}{\lstinputlisting[language=Python,caption={#2}]{#1}}{\par\noindent\textit{Source file \detokenize{#1} is supplied in the code archive.}\par}}
+
 % ---------- Code listing style ----------
 \lstset{
-    basicstyle=\ttfamily\small,
+    basicstyle=\ttfamily\footnotesize,
     breaklines=true,
     frame=single,
     backgroundcolor=\color{gray!8},
     keywordstyle=\color{blue!70!black},
     commentstyle=\color{green!50!black},
     stringstyle=\color{red!60!black},
-    showstringspaces=false
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    extendedchars=true,
+    literate={°}{{$^\circ$}}1 {→}{{$\rightarrow$}}1 {—}{{---}}1 {–}{{--}}1 {‘}{{'}}1 {’}{{'}}1 {“}{{"}}1 {”}{{"}}1 {×}{{$\times$}}1 {±}{{$\pm$}}1 {≤}{{$\leq$}}1 {≥}{{$\geq$}}1 {é}{{\'e}}1 {è}{{\`e}}1 {ü}{{\"u}}1 {ö}{{\"o}}1 {ä}{{\"a}}1 {…}{{...}}1 {✓}{{+}}1
 }
 
 % ---------- Header / Footer ----------
+\newcommand{\headerlogo}{%
+  \IfFileExists{logo.png}{\includegraphics[height=0.9cm]{logo.png}}{%
+  \IfFileExists{images/logo.png}{\includegraphics[height=0.9cm]{images/logo.png}}{%
+  \IfFileExists{report_images/logo.png}{\includegraphics[height=0.9cm]{report_images/logo.png}}{}}}}
+\newcommand{\headertext}{\small\color{gray}2025--26 Final Report}
+
 \pagestyle{fancy}
 \fancyhf{}
-\rhead{CMP6228 Deep Neural Networks}
-\lhead{Blood Cell Classification}
+\lhead{\headertext}
+\rhead{\headerlogo}
 \cfoot{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \lhead{\headertext}%
+  \rhead{\headerlogo}%
+  \cfoot{\thepage}%
+  \renewcommand{\headrulewidth}{0pt}}
 
 % ---------- Title ----------
 \title{
     \vspace{-1.5cm}
-    \textbf{Comparative Transfer Learning for Blood Cell Classification\\ with Data-Integrity Validation and Grad-CAM Explainability}\\[0.4em]
+    \textbf{Comparative Transfer Learning for Blood Cell Classification\\ with a Data-Integrity Audit and Grad-CAM Explainability}\\[0.4em]
     \large CMP6228 Deep Neural Networks --- Final Report
 }
 \author{
@@ -63,53 +86,92 @@
 \date{\today}
 
 \begin{document}
-\maketitle
 
+\begin{titlepage}
+    \centering
+    \includegraphics[width=0.6\textwidth]{logo.png}\\[2em]
+
+    {\Large\bfseries CMP6228}\\[1.2em]
+    {\Large\bfseries Deep Neural Networks}\\[1.2em]
+    {\large\bfseries Assessment 2 -- Final Report}\\[2.5em]
+
+    {\LARGE\bfseries
+        Comparative Transfer Learning for Blood Cell Classification\\[0.5em]
+        with a Data-Integrity Audit and Grad-CAM Explainability\par}
+
+    \vspace{1em}
+    \rule{\textwidth}{0.4pt}\\[3em]
+
+    \begin{flushleft}
+        \renewcommand{\arraystretch}{1.5}
+        \begin{tabular}{@{}p{4cm}l@{}}
+            \textbf{Student Name:}  & Shekhar Lamichhane Magar \\
+            \textbf{Student ID:}    & 23189647 \\
+            \textbf{Course:}        & Deep Neural Networks \\
+            \textbf{Assessment:}    & Assessment 2 -- Final Report \\
+            \textbf{Word Count:}    & \(\sim\)3,000 (main text, Sections 1--5) \\
+            \textbf{Academic Year:} & 2025--26 \\
+        \end{tabular}
+    \end{flushleft}
+\end{titlepage}
+
+%TC:ignore
 % =====================================================
 \begin{abstract}
 \noindent
-This report investigates transfer learning for classifying peripheral blood cells into three classes --- red blood cells (RBCs), white blood cells (WBCs), and platelets --- using microscopy crops derived from the TXL-PBC dataset. Three ImageNet-pretrained backbones, EfficientNet-B0, MobileNetV3-Small, and DenseNet121, are compared under an identical training configuration, with class imbalance addressed through a weighted sampler and weighted cross-entropy loss. An initial evaluation reported perfect test-set accuracy, which prompted a structured data-integrity investigation rather than acceptance at face value: filename, source-image, and official split-list checks ruled out conventional leakage, while a perceptual-hash audit identified 694 near-duplicate crops (97\% RBC) that were removed before retraining. Following this cleanup, EfficientNet-B0 achieved a test macro-F1 of 1.0000, with MobileNetV3-Small and DenseNet121 close behind at 0.9952 and 0.9916 respectively. Grad-CAM visualisations provide qualitative evidence about the regions used by the model, while the varying error patterns across architectures support genuine class separability over residual leakage. The report documents this validation process alongside the standard comparison of architectures, losses, and computational cost.
+This report investigates transfer learning for classifying peripheral blood cells into three classes --- red blood cells (RBCs), white blood cells (WBCs), and platelets --- using microscopy crops derived from the TXL-PBC dataset. Three ImageNet-pretrained backbones, EfficientNet-B0, MobileNetV3-Small, and DenseNet121, are compared under an identical training configuration, with class imbalance addressed through a weighted sampler and weighted cross-entropy loss. An initial evaluation gave EfficientNet-B0 perfect test accuracy, which prompted a data-integrity audit: filename, source-image, and official split-list checks found no conventional leakage, but a perceptual-hash audit flagged 694 crops (675 of them RBCs) as near-duplicates, 113 of them in the test split. All three models were retrained and evaluated on the cleaned dataset (1,768 test crops). EfficientNet-B0's perfect score did not survive (accuracy 0.997172, macro-F1 0.989587), and MobileNetV3-Small became the best model (accuracy 0.999434, macro-F1 0.995184) while also training fastest, ahead of DenseNet121 (0.998303 and 0.992360). The models differ by at most four test crops from single runs, so the new ranking is not statistically established and residual leakage cannot be excluded. Grad-CAM overlays are provided as qualitative examples.
 \end{abstract}
 
-\tableofcontents
 \newpage
+\tableofcontents
+\clearpage
+\listoffigures
+\clearpage
+\listoftables
+\clearpage
+%TC:endignore
 
 % =====================================================
 \section{Introduction}
 
-Manual microscopy for classifying blood cells is time-consuming and subject to inter-observer variability. Automated classification of red blood cells (RBCs), white blood cells (WBCs), and platelets can support haematology workflows by pre-screening microscopy fields. This report presents a transfer-learning approach to this three-class problem using the TXL-PBC dataset, comparing three convolutional backbones and addressing two practical challenges that arose during the work: class imbalance and an initially suspicious evaluation result.
+Blood cell analysis and counting support clinical diagnosis \citep{gan2025txlpbc}, and automated classification of red blood cells (RBCs), white blood cells (WBCs), and platelets could reduce the manual effort of reviewing microscopy fields. This report applies transfer learning to this three-class problem using TXL-PBC \citep{gan2025txlpbc}, a public collection that integrates four peripheral blood smear datasets, and addresses two practical challenges: severe class imbalance and an initially suspicious evaluation result.
 
-The dataset used is derived from TXL-PBC, a publicly available collection of peripheral blood smear images with YOLO-format bounding-box annotations. A preprocessing pipeline crops each annotated cell, organises crops into class folders, and applies the dataset's official train/validation/test split lists. Three pretrained backbones --- EfficientNet-B0, MobileNetV3-Small, and DenseNet121 --- are fine-tuned under identical settings, with class-weighted and focal loss variants evaluated for handling the pronounced imbalance between RBC, WBC, and platelet counts.
+All three models scored unusually high at first, EfficientNet-B0 reaching 100\% test accuracy. Rather than report this uncritically, the data were audited for leakage, which flagged near-duplicate crops. A cleaned dataset was built and all three models were retrained and re-evaluated on it, so the effect of cleaning could be measured directly.
 
-During evaluation, all three models scored unusually high, with the best model reaching 100\% test accuracy. Rather than reporting this uncritically, a multi-stage validation process was carried out: checking for filename and source-image overlap between splits, verifying the evaluation code path, and running a perceptual-hash near-duplicate audit across every pair of splits. This process, detailed in Sections 3 and 4, is presented as a core methodological contribution of this work, alongside the architecture comparison and Grad-CAM explainability analysis.
-
-The remainder of this report is organised as follows: Section 2 defines the dataset and the classification problem; Section 3 describes the full methodology, including preprocessing, the near-duplicate audit, model architectures, loss functions, and training configuration; Section 4 presents the experimental results, the data-integrity investigation, and Grad-CAM findings; Section 5 summarises the main conclusions.
+The aim is to compare three pretrained backbones and to establish how far the results can be trusted. The contributions are:
+\begin{itemize}[itemsep=2pt]
+    \item an imbalance-aware comparison of EfficientNet-B0, MobileNetV3-Small, and DenseNet121 before and after near-duplicate removal;
+    \item a data-integrity audit that flagged 694 near-duplicate crops, with an assessment of its limits and of its effect on the results;
+    \item a qualitative Grad-CAM analysis of a pre-cleanup EfficientNet-B0 checkpoint.
+\end{itemize}
 
 % =====================================================
-\section{Problem Statement}
+\section{Problem Statement}\label{sec:problem}
 
 \subsection{Dataset}
 
-The dataset originates from the TXL-PBC repository: peripheral blood smear microscopy images, each accompanied by a YOLO-format annotation file listing bounding boxes and class indices for individual cells (0 = WBC, 1 = RBC, 2 = Platelet). Each bounding box is cropped from its source image and written into a per-class folder structure (\texttt{train/}, \texttt{val/}, \texttt{test/}, each containing \texttt{RBC}, \texttt{WBC}, \texttt{Platelet} subfolders).
+TXL-PBC \citep{gan2025txlpbc} is a curated collection integrating four public resources (BCCD, BCDD, PBC and Raabin-WBC), released under the MIT licence. It contains 1,260 smear images with 18,143 annotated cells, each image having a YOLO-format file of bounding boxes and class indices (0 = WBC, 1 = RBC, 2 = Platelet). Each box is cropped and written to per-class folders under \texttt{train/}, \texttt{val/} and \texttt{test/}.
 
-Splitting is performed at the \emph{source-image} level using TXL-PBC's own official split lists (882 training images, 252 validation images, 126 test images), rather than a custom random split. This preserves comparability with any other work using the same benchmark split and avoids leakage that a naive crop-level split could introduce. In practice, this yields an approximate 70/20/10 division of source images across train/validation/test --- a detail worth stating explicitly, since it differs from the commonly assumed 70/15/15 convention and was confirmed by inspecting the split-list files directly rather than assumed from a configuration comment.
+Splitting uses TXL-PBC's official source-image lists (882 training, 252 validation and 126 test images; about 70/20/10) rather than a random split, which keeps results comparable with other work and avoids crops of one image appearing in several splits. Table~\ref{tab:dataset} gives the crop counts before near-duplicate cleanup. RBCs outnumber platelets by roughly 35:1 in the original test set and 29:1 in training (33:1 and 28:1 after cleaning), which motivates macro-averaged metrics and imbalance-aware training.
 
 \begin{table}[H]
 \centering
-\caption{Dataset summary after preprocessing and near-duplicate cleanup (Section 3.2).}
+\caption[Crops per split before near-duplicate cleanup]{Crops per split before near-duplicate cleanup, with crops flagged for removal by the audit (Section~\ref{sec:audit}) in brackets.}
 \label{tab:dataset}
-\begin{tabular}{lccc}
-\toprule
-\textbf{Split} & \textbf{WBC} & \textbf{RBC} & \textbf{Platelet} \\
-\midrule
-Train & 901  & 10{,}854 & 382 \\
-Val   & 252  & 3{,}180  & 112 \\
-Test  & 127  & 1{,}593  & 48  \\
-\bottomrule
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Split} & \textbf{WBC} & \textbf{RBC} & \textbf{Platelet} & \textbf{Total} \\
+\hline
+Train & 908 (7) & 11{,}220 (366) & 382 (0) & 12{,}510 (373) \\
+\hline
+Val & 257 (5) & 3{,}383 (203) & 112 (0) & 3{,}752 (208) \\
+\hline
+Test & 133 (6) & 1{,}699 (106) & 49 (1) & 1{,}881 (113) \\
+\hline
+Total & 1{,}298 (18) & 16{,}302 (675) & 543 (1) & 18{,}143 (694) \\
+\hline
 \end{tabular}
 \end{table}
-
-The class imbalance is severe: RBCs outnumber platelets by roughly 28:1 in the test set alone. This motivates the use of macro-averaged evaluation metrics and imbalance-aware loss functions described in Section 3.
 
 \subsection{Problem Formulation}
 
@@ -117,282 +179,348 @@ Given a cropped cell image \(x \in \mathbb{R}^{H \times W \times 3}\), the model
 \[
 \hat{y} = \mathrm{softmax}(f_\theta(x)) \in \mathbb{R}^{C}.
 \]
-Because the class distribution is skewed, macro-averaged precision, recall, and F1 are used as the primary metrics rather than raw accuracy, since accuracy alone can be dominated by RBC performance while masking poor minority-class results.
+Because the classes are skewed, macro-F1 is the primary metric alongside accuracy, since accuracy can be dominated by RBC performance.
+
+\subsection{Related Work and Recent Trends}\label{sec:related}
+
+Blood cell classification is commonly studied on datasets of individual cropped cells. The PBC dataset \citep{acevedo2020pbc}, with thousands of images in eight cell groups, is widely used and is one of the four resources integrated into TXL-PBC, which adds bounding boxes for the three classes used here.
+
+Recent work has moved towards vision transformers \citep{dosovitskiy2021vit} and modernised ConvNets such as ConvNeXt \citep{liu2022convnext}, typically pretrained at scale; these were not evaluated. Compact CNNs suit a three-class task on a modest dataset, and earlier work reports that much smaller architectures can match standard ImageNet models on medical tasks \citep{raghu2019transfusion}. MobileNetV3 \citep{howard2019mobilenetv3} targets resource-constrained devices, making it a natural efficiency baseline.
+
+Evaluation validity is a further concern. \citet{barz2020purging} found near-duplicates between CIFAR training and test sets, \citet{kapoor2023leakage} document leakage as a common source of over-optimistic results, and \citet{geirhos2020shortcut} describe shortcut learning. \citet{adebayo2018sanity} show that some saliency methods are insensitive to model parameters, so interpretability also needs sanity checks. These points motivate the audit in Section~\ref{sec:audit} and the caution in Section~\ref{sec:validation}.
 
 % =====================================================
-\section{Proposed Method}
+\section{Proposed Method}\label{sec:method}
 
 \subsection{Preprocessing and Data Preparation}
 
-Raw images and YOLO labels are processed by \texttt{crop\_dataset.py}, which converts each bounding box to pixel coordinates, crops the region, discards degenerate crops, and writes the result into the class-folder structure described in Section 2. Splitting uses TXL-PBC's official image lists where present, with a seeded random 70/15/15 fallback retained in code for robustness but not active in this project's runtime, since the official lists were available.
+All experiments use PyTorch \citep{paszke2019pytorch}; dependencies are in \texttt{requirements.txt}, and the full source is in \texttt{code.zip} (Appendix~\ref{app:repro}). \texttt{crop\_dataset.py} converts each YOLO box to pixel coordinates, discards degenerate crops and writes the class folders, using the official split lists (a random 70/15/15 fallback exists but was not used). Augmentation and the \texttt{WeightedRandomSampler} are listed in Table~\ref{tab:hyper}. Offline oversampling is configured but was not executed, so class balance relies on the sampler and loss weights alone.
 
-Training-time augmentation consists of random rotation (up to \(20^\circ\)), random horizontal flipping, and brightness/contrast jitter, followed by ImageNet normalisation. Validation and test transforms apply only resizing and normalisation. A \texttt{WeightedRandomSampler} inversely weights each class by frequency so that mini-batches are approximately class-balanced during training.
+\subsection{Near-Duplicate Audit and Dataset Cleaning}\label{sec:audit}
 
-\subsection{Near-Duplicate Audit and Dataset Cleaning}
+The initial 100\% test accuracy was treated as a signal to investigate. Three checks were run. First, filenames and source-image identifiers were compared across splits, and second, the official split lists were checked for repeated filenames; no overlap was found in either. Third, a perceptual hash (pHash; the default 64-bit \texttt{imagehash} hash) was computed for every crop and compared pairwise across splits, only between crops of the same class, with a Hamming-distance threshold of 5. No sensitivity analysis was run for this threshold.
 
-An initial evaluation pass reported 100\% test accuracy for the best-performing model, which is an unusual result for a real-world microscopy dataset and was treated as a signal to investigate rather than a result to report directly. Three checks were performed before considering the number reliable:
+The pHash audit found near-duplicate pairs in every split combination: 382 between train and validation, 168 between train and test and 42 between validation and test (592 in total, 582 involving RBCs). In total 694 crops were flagged for removal (Table~\ref{tab:dataset}), keeping the first crop of each near-duplicate group in train, validation, test order, so a duplicate in an evaluation split is removed rather than the training copy. The test set lost 113 of its 1,881 crops (6.0\%). By class, 4.1\% of RBCs, 1.4\% of WBCs and 0.2\% of platelets were flagged. Because 694 exceeds 592, some removals reflect within-split duplicates; the breakdown was not recorded.
 
-\begin{enumerate}[itemsep=2pt]
-    \item \textbf{Filename and source-image overlap.} No image filenames, and no source-image identifiers, were found duplicated across the train, validation, and test folders.
-    \item \textbf{Official split-list integrity.} TXL-PBC's own train/val/test list files were checked for repeated filenames across lists; none were found, ruling out a dataset-level split flaw.
-    \item \textbf{Perceptual-hash near-duplicate detection.} Since visually near-identical crops can exist between splits even without filename or source-image overlap (a known issue in microscopy datasets due to repetitive cell morphology, particularly for RBCs), a perceptual hash (pHash) was computed for every processed crop and compared pairwise across all split combinations using a Hamming-distance threshold of 5.
-\end{enumerate}
+\paragraph{Cleaned dataset and retraining.} The flagged crops were removed, leaving 12,137 training, 3,544 validation and 1,768 test crops (test: 127 WBC, 1,593 RBC, 48 platelet). All three models were retrained from their ImageNet initialisation and re-evaluated with the settings in Table~\ref{tab:hyper}; the pre-cleanup checkpoints and results were preserved separately. The two evaluations therefore use different test sets (1,881 and 1,768 crops).
 
-The pHash audit found near-duplicate pairs across every split combination: 382 pairs between train and validation, 168 between train and test, and 42 between validation and test. In total, 694 images were identified as near-duplicates and removed, clustering images and retaining one representative per cluster. The removals were heavily concentrated in RBC (675 of 694, or 97\%), consistent with the low morphological diversity of that class, with only 18 WBC and 1 Platelet image affected. Table \ref{tab:dataset} in Section 2 reports the resulting, cleaned class counts. All three models were retrained from scratch on this cleaned dataset; pre-cleaning checkpoints and results were preserved separately for comparison rather than discarded.
+The audit has limits. pHash is not invariant to flips or rotations. Comparisons were within class only, so near-identical crops with different labels are not flagged; conversely, several example pairs in Appendix~\ref{app:audit} differ visibly in staining or shape, so 694 is best read as an upper bound. Duplicates across splits despite distinct filenames may reflect overlap between the four integrated collections, but this was not tested, and hashing was done on crops rather than whole images.
 
 \subsection{Model Architectures}
 
-Three ImageNet-pretrained backbones are compared. The implementation replaces the original ImageNet classifier with a three-class output: EfficientNet-B0 and DenseNet121 use dropout followed by a linear layer, while MobileNetV3-Small replaces its final classifier layer with a three-class linear layer. EfficientNet-B0 uses compound scaling of depth, width, and resolution \cite{tan2019efficientnet} and offers a strong accuracy-to-parameter ratio. MobileNetV3-Small \cite{howard2019mobilenetv3} is included as an efficiency baseline, while DenseNet121 \cite{huang2017densely} provides a feature-reuse baseline. The comparison therefore spans different parameter budgets and architectural designs without claiming a common custom head that is not present in the implementation.
+Three ImageNet-pretrained \citep{deng2009imagenet} backbones are compared (Figure~\ref{fig:architecture}): EfficientNet-B0 \citep{tan2019efficientnet}, the primary model, for its accuracy-to-size ratio; MobileNetV3-Small \citep{howard2019mobilenetv3} as an efficiency baseline; and DenseNet121 \citep{huang2017densely} as a feature-reuse baseline. Each ImageNet classifier is replaced by a three-class head (Table~\ref{tab:hyper}). Trainable parameters are approximately 4.0, 1.5 and 7.0 million respectively, derived from the standard torchvision architectures rather than measured from the checkpoints.
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\caption{Backbone comparison.}
-\label{tab:backbones}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Model} & \textbf{Trainable params (M)} & \textbf{Role} \\
-\midrule
-EfficientNet-B0     & 4.011  & Primary comparison \\
-MobileNetV3-Small   & 1.968  & Efficiency baseline \\
-DenseNet121         & 6.957  & Feature-reuse baseline \\
-\bottomrule
-\end{tabular}
-\end{table}
+\includegraphics[width=\textwidth]{model_architecture}
+\caption[Pipeline]{Pipeline overview. The post-cleanup runs use the cleaned crops; the pre-cleanup runs skip the ``Cleaned crops'' step. Macro-AUC is reported only for the post-cleanup runs.}
+\label{fig:architecture}
+\end{figure}
 
-\subsection{Loss Functions and Class Imbalance}
+\subsection{Loss Function and Class Imbalance}
 
-Two loss functions are implemented. Class-weighted cross-entropy weights each class inversely to its frequency, \(w_c \propto 1/n_c\), and is the loss selected by the project configuration. Focal loss with effective-number weighting \cite{lin2017focal,cui2019class} is available as an alternative and instead uses
+Imbalance is handled twice. The sampler balances mini-batches, and the loss is cross-entropy with effective-number class weights \citep{cui2019class},
 \[
-\mathcal{L}_{\text{focal}} = -\frac{1}{N}\sum_{i=1}^{N} \alpha_{y_i} (1 - \hat{p}_{i, y_i})^{\gamma} \log \hat{p}_{i, y_i},
+\mathcal{L}_{\text{WCE}} = -\frac{1}{N}\sum_{i=1}^{N} w_{y_i} \log \hat{p}_{i, y_i}, \qquad w_c \propto \frac{1-\beta}{1-\beta^{n_c}}, \quad \beta = 0.999,
 \]
-where \(\alpha_c\) derives from the effective number of samples \((1-\beta^{n_c})/(1-\beta)\). The reported experiments use weighted cross-entropy together with the weighted sampler; the focal-loss option was not used for the final configured runs.
+where \(n_c\) is the number of training crops in class \(c\) in the dataset being used, normalised so weights average about one. Focal loss \citep{lin2017focal} was implemented but not used. Because both mechanisms compensate for imbalance, minority classes are effectively corrected twice, and their separate contributions were not ablated.
 
-\subsection{Training Configuration}
+\subsection{Training and Model Selection}
 
-Models are optimised with Adam using a learning rate of \(3\times10^{-4}\), weight decay of \(1\times10^{-5}\), batch size 32, and a maximum of 30 epochs. Early stopping uses a patience of six epochs. Checkpoints are saved on best validation macro-F1 rather than accuracy, since accuracy alone would favour the majority RBC class. Per-epoch training time and peak GPU memory are logged automatically when available.
+Models are fine-tuned with Adam \citep{kingma2015adam} (Table~\ref{tab:hyper}). Training stops when validation macro-F1 has not improved for six epochs, and the checkpoint with the best validation macro-F1 is kept, since accuracy alone would favour the majority RBC class.
 
 % =====================================================
-\section{Experimental Results}
+\section{Experimental Results}\label{sec:results}
+
+\subsection{Experimental Setup}\label{sec:setup}
+
+Table~\ref{tab:hyper} lists the settings shared by all three backbones and both dataset versions. The test set is used only for the final evaluation, and each result is a single run.
+
+\begin{table}[!t]
+\centering
+\caption{Settings used for all experiments.}
+\label{tab:hyper}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.6cm}|>{\raggedright\arraybackslash}p{11.0cm}|}
+\hline
+\textbf{Setting} & \textbf{Value} \\
+\hline
+Backbones & EfficientNet-B0, MobileNetV3-Small, DenseNet121; torchvision \texttt{IMAGENET1K\_V1} weights; all layers fine-tuned \\
+\hline
+Input & \(224\times224\), ImageNet normalisation \\
+\hline
+Head & Dropout 0.3 + linear (3 classes) for EfficientNet-B0 and DenseNet121; linear (3 classes) for MobileNetV3-Small \\
+\hline
+Loss and sampler & Effective-number weighted cross-entropy (\(\beta=0.999\)); \texttt{WeightedRandomSampler} (inverse class frequency) \\
+\hline
+Optimiser & Adam, learning rate \(3\times10^{-4}\), weight decay \(1\times10^{-5}\), no schedule \\
+\hline
+Batches and epochs & Batch size 32, maximum 30 epochs \\
+\hline
+Stopping and selection & Patience 6 on validation macro-F1; best validation macro-F1 checkpoint \\
+\hline
+Augmentation & Rotation up to \(20^\circ\), horizontal flip (\(p=0.5\)), brightness and contrast jitter (0.2) \\
+\hline
+Data and seed & Original training split (12,510 crops) or cleaned training split (12,137 crops); seed 42 \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{Model Comparison}
 
-Table \ref{tab:results} reports test-set metrics for all three backbones on the cleaned dataset (1,768 test images: 127 WBC, 1,593 RBC, 48 Platelet).
+Table~\ref{tab:results} reports results on the cleaned test set (1,768 crops: 127 WBC, 1,593 RBC, 48 platelet). Error counts are implied by accuracy, and macro-AUC is one-vs-rest. Training time is the wall-clock time of a run, which also depends on when early stopping triggered, and evaluation time includes data loading, so neither is a latency benchmark.
 
 \begin{table}[H]
 \centering
-\caption{Test-set model comparison on the cleaned dataset.}
+\caption[Cleaned test-set results]{Cleaned test-set results (1,768 crops), with training and evaluation time in seconds.}
 \label{tab:results}
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Model} & \textbf{Macro-F1} & \textbf{Macro-AUC} & \textbf{Accuracy} & \textbf{Params (M)} \\
-\midrule
-EfficientNet-B0   & 1.0000 & 1.000000 & 1.0000 & 5.3 \\
-MobileNetV3-Small & 0.9952 & 1.000000 & 0.9994 & 2.5 \\
-DenseNet121       & 0.9916 & 0.999997 & 0.9983 & 8.0 \\
-\bottomrule
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|l|c|c|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Accuracy} & \textbf{Macro-F1} & \textbf{Macro-AUC} & \textbf{Errors} & \textbf{Train (s)} & \textbf{Eval (s)} \\
+\hline
+EfficientNet-B0 & 0.997172 & 0.989587 & 0.999987 & 5 & 1{,}396.73 & 10.58 \\
+\hline
+MobileNetV3-Small & 0.999434 & 0.995184 & 1.000000 & 1 & 895.60 & 8.70 \\
+\hline
+DenseNet121 & 0.998303 & 0.992360 & 0.999996 & 3 & 1{,}448.15 & 12.14 \\
+\hline
 \end{tabular}
 \end{table}
 
+MobileNetV3-Small was the best model (one error), followed by DenseNet121 (three) and EfficientNet-B0 (five). Macro-AUC is close to 1 for all three and does not discriminate between them. Compared with the pre-cleanup results (Table~\ref{tab:before}), EfficientNet-B0 fell from a perfect score to five errors, MobileNetV3-Small improved slightly and DenseNet121 changed little, so cleaning reversed the order of the models. MobileNetV3-Small also took about 36--38\% less time to train than the other two and had the shortest evaluation time. The confusion matrices (Figure~\ref{fig:cm_all}) show that all three models misclassified one platelet as a WBC, and EfficientNet-B0 and DenseNet121 each also misclassified one WBC as an RBC. The remaining errors are not visible after rounding to two decimals in the normalised matrices, so they are inferred to be RBC errors; this attribution comes from the rounded matrices, not raw counts.
+
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{outputs/results/confusion_matrices_all.png}
-\caption{Normalised confusion matrices for all three models on the cleaned test set.}
+\includegraphics[width=\textwidth]{post_dedup_confusion_matrices_all.png}
+\caption[Confusion matrices, cleaned test set]{Normalised confusion matrices (rows sum to 1) on the cleaned test set (1,768 crops). Larger versions are in Appendix~\ref{app:cm}.}
 \label{fig:cm_all}
 \end{figure}
 
-\begin{figure}[H]
+\begin{table}[H]
 \centering
-\includegraphics[width=0.85\textwidth]{outputs/results/loss_curves.png}
-\caption{Training and validation loss curves for all three backbones.}
-\label{fig:loss_curves}
-\end{figure}
+\caption[Before and after cleaning]{Pre-cleanup (1,881 test crops) and post-cleanup (1,768 test crops) results.}
+\label{tab:before}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Accuracy before} & \textbf{Accuracy after} & \textbf{Macro-F1 before} & \textbf{Macro-F1 after} \\
+\hline
+EfficientNet-B0 & 1.000000 & 0.997172 & 1.000000 & 0.989587 \\
+\hline
+MobileNetV3-Small & 0.998937 & 0.999434 & 0.993959 & 0.995184 \\
+\hline
+DenseNet121 & 0.998937 & 0.998303 & 0.993978 & 0.992360 \\
+\hline
+\end{tabular}
+\end{table}
 
-EfficientNet-B0 recorded zero misclassifications across all 1,768 test images. MobileNetV3-Small misclassified a single Platelet as WBC (2\% of the Platelet class), and DenseNet121 misclassified three RBC images, twice as Platelet and once as WBC (Figure \ref{fig:cm_all}). Validation loss for DenseNet121 and MobileNetV3-Small shows transient instability around epochs 6--7 before both converge (Figure \ref{fig:loss_curves}); this did not affect final checkpoint selection, since checkpointing is keyed to the best validation macro-F1 epoch rather than the final epoch.
+\subsection{Status of the Perfect-Accuracy Result}\label{sec:validation}
 
-\subsection{Validating the Perfect-Accuracy Result}
+The perfect score did not survive cleaning: retrained on the cleaned data, EfficientNet-B0 made five errors on 1,768 test crops. This is consistent with near-duplicates having inflated the pre-cleanup score, since the 113 removed test crops included at least some copies of training crops. It does not prove it, because each result is a single run and the training and test sets changed together, so retraining variation is confounded with the effect of cleaning. Cleaning also did not hurt every model (MobileNetV3-Small improved, DenseNet121 changed little), which fits leakage benefiting models unevenly, or run-to-run noise.
 
-A single perfect score would ordinarily warrant scepticism on a real dataset, so this result is validated rather than simply reported. Two pieces of evidence support its validity. First, the errors that do occur are architecture-dependent rather than uniform: if the perfect score for EfficientNet-B0 were an artefact of residual data leakage, the same leakage would be expected to inflate all three models similarly, since leakage is a property of the data pipeline, not the model. Instead, MobileNetV3-Small and DenseNet121 each make distinct, small numbers of errors, which is inconsistent with a shared leakage explanation.
-
-Second, qualitative inspection suggests that correct predictions are not necessarily uniformly certain, which is consistent with some samples being harder than others. However, the current repository does not preserve a confidence-distribution output file, so this observation is reported as an interpretation rather than as a verified aggregate statistic. A future experiment should save per-sample probabilities before making numerical claims about the confidence distribution.
+Differences between models are statistically small. Exact 95\% Clopper--Pearson intervals for the error rate are 0.09--0.66\% for EfficientNet-B0 (five errors), 0.001--0.31\% for MobileNetV3-Small (one) and 0.04--0.50\% for DenseNet121 (three). They overlap, so the new ranking is not established, and the audit's limits (Section~\ref{sec:audit}) mean the cleaned test set may still contain undetected duplicates. Three possible shortcuts were not tested: size or blur cues (small crops such as platelets are enlarged more and appear blurrier, Figure~\ref{fig:sanity}), image source (the four collections were acquired under different conditions), and prediction confidence (per-sample softmax outputs were not saved).
 
 \subsection{Grad-CAM Explainability}
 
-Grad-CAM \cite{selvaraju2017gradcam} was applied to EfficientNet-B0's final convolutional layer to visualise which spatial regions drive each prediction, computed by backpropagating the target class score to the last convolutional activations, weighting by the pooled gradient, and overlaying the resulting map on the input crop.
+Grad-CAM \citep{selvaraju2017gradcam} was applied to the final convolutional layer of the pre-cleanup EfficientNet-B0 checkpoint. In Figure~\ref{fig:gradcam_correct}, high activation appears to fall on the nucleus for the WBC, the cell body for the RBC and the granular cluster for the platelet, not on the background. Each panel is the first test crop of its class in filename order (not chosen for representativeness), so the figure illustrates rather than establishes this behaviour. Crops are centred, so central attention is expected anyway; the maps are coarse and no saliency sanity check \citep{adebayo2018sanity} was run. Grad-CAM was generated only for this checkpoint, which is no longer the best model, so these maps say nothing about why any model made an error.
 
 \begin{figure}[H]
 \centering
 \begin{subfigure}[t]{0.32\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{outputs/results/gradcam_RBC_correct.png}
-    \caption{RBC (correct)}
+    \includegraphics[width=\textwidth]{gradcam_RBC_correct.png}
+    \caption{RBC}
 \end{subfigure}
 \hfill
 \begin{subfigure}[t]{0.32\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{outputs/results/gradcam_WBC_correct.png}
-    \caption{WBC (correct)}
+    \includegraphics[width=\textwidth]{gradcam_WBC_correct.png}
+    \caption{WBC}
 \end{subfigure}
 \hfill
 \begin{subfigure}[t]{0.32\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{outputs/results/gradcam_Platelet_correct.png}
-    \caption{Platelet (correct)}
+    \includegraphics[width=\textwidth]{gradcam_Platelet_correct.png}
+    \caption{Platelet}
 \end{subfigure}
-\caption{Grad-CAM overlays for correctly classified samples from each class.}
+\caption[Grad-CAM examples]{Qualitative Grad-CAM examples (pre-cleanup EfficientNet-B0), one correctly classified crop per class.}
 \label{fig:gradcam_correct}
 \end{figure}
 
-For correctly classified cells (Figure \ref{fig:gradcam_correct}), attention concentrates on the lobulated nucleus for WBC, the central cell body for RBC, and the granular cluster for Platelet --- the same features a haematologist would use, rather than background staining or crop borders.
-
-\begin{figure}[H]
-\centering
-\begin{subfigure}[t]{0.24\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{outputs/results/efficientnet_correct_platelet_mobilenet_wrong.png}
-    \caption{Platelet vs.\ MobileNet}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.24\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{outputs/results/efficientnet_correct_rbc_densenet_wrong_1.png}
-    \caption{RBC vs.\ DenseNet (1)}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.24\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{outputs/results/efficientnet_correct_rbc_densenet_wrong_2.png}
-    \caption{RBC vs.\ DenseNet (2)}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.24\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{outputs/results/efficientnet_correct_rbc_densenet_wrong_3.png}
-    \caption{RBC vs.\ DenseNet (3)}
-\end{subfigure}
-\caption{Grad-CAM overlays on the four cases where MobileNetV3-Small or DenseNet121 misclassified a sample that EfficientNet-B0 classified correctly.}
-\label{fig:gradcam_error}
-\end{figure}
-
-The four cases in Figure \ref{fig:gradcam_error} are the exact images misclassified by the weaker models, viewed through EfficientNet-B0's correct attention pattern. These cases correspond to genuinely borderline crops rather than clean examples, which further supports the separability argument in Section 4.2: the weaker models fail specifically on ambiguous instances near the RBC/Platelet/WBC size and shape boundary, not on arbitrary or clearly-labelled samples.
-
 \subsection{Discussion}
 
-EfficientNet-B0 provides the strongest result on every metric while using roughly two-thirds the parameters of DenseNet121, making it the clear recommendation from this comparison. MobileNetV3-Small, despite having under half of EfficientNet-B0's parameters, trails by only 0.0048 macro-F1, making it an attractive choice where inference efficiency matters more than the last fraction of accuracy. DenseNet121's larger parameter count did not translate into better performance here, suggesting that for this task the additional feature-reuse capacity is not the limiting factor; the RBC/WBC/Platelet distinction is dominated by size, shape and staining cues that shallower networks already capture well. This is consistent with the training-time and memory logging built into the pipeline (Section 3.5), which supports treating architecture choice here primarily as an efficiency decision rather than an accuracy one.
+After cleaning, MobileNetV3-Small was the best model, with one error, about 38\% of EfficientNet-B0's parameters and the shortest training and evaluation times, so on this dataset the smallest model was also the most accurate and efficient. EfficientNet-B0, the primary model, went from perfect to last, and DenseNet121's larger size brought no gain. The models differ by at most four crops from single runs, so these orderings are provisional and a different seed could reorder them. Timings are single-run wall-clock values, not a controlled latency benchmark.
 
 % =====================================================
-\section{Summary}
+\section{Summary}\label{sec:conclusion}
 
-This report presented a transfer-learning pipeline for three-class blood cell classification, comparing EfficientNet-B0, MobileNetV3-Small, and DenseNet121 under class-imbalance-aware training. An initial perfect-accuracy result was not accepted uncritically: a structured investigation covering filename overlap, source-image overlap, official split-list integrity, and perceptual-hash near-duplicate detection identified and removed 694 near-duplicate crops before retraining. The validated result --- EfficientNet-B0 achieving a macro-F1 of 1.0000, with MobileNetV3-Small and DenseNet121 close behind --- is supported by architecture-dependent error patterns and a non-uniform confidence distribution, both inconsistent with residual leakage. Grad-CAM confirms that predictions are driven by cell morphology rather than artefacts.
+\subsection{Study Overview}
 
-This work is a research and educational exercise on a public, de-identified dataset and is not a clinical tool. Strong performance on TXL-PBC does not guarantee generalisation to different scanners, staining protocols, or patient populations, and any real deployment would require external validation, ethical approval, and secure model-loading practices beyond the scope of this project. Future work includes cross-validation for confidence intervals on macro-F1, quantitative Grad-CAM localisation against expert-annotated regions, and evaluation on an independently sourced microscopy dataset to test generalisation beyond TXL-PBC.
+This report compared EfficientNet-B0, MobileNetV3-Small and DenseNet121 for three-class blood cell classification on TXL-PBC under imbalance-aware training, and treated an initial perfect test score as a prompt for investigation rather than a result to report as-is. Filename, source-image and split-list checks found no conventional leakage, but a perceptual-hash audit flagged 694 near-duplicate crops, and all three models were retrained and re-evaluated on the cleaned dataset so the effect of the cleaning could be measured directly rather than assumed.
 
-% =====================================================
-\begin{thebibliography}{99}
+\subsection{Main Findings}
 
-\bibitem{cui2019class}
-Cui, Y., Jia, M., Lin, T., Song, Y. and Belongie, S. (2019) Class-balanced loss based on effective number of samples. In: \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}. Long Beach, CA, pp.9268--9277.
+On the cleaned test set (1,768 crops), MobileNetV3-Small was the best model (accuracy 0.999434, macro-F1 0.995184) and also the fastest to train (895.60~s), ahead of DenseNet121 (0.998303, 0.992360) and EfficientNet-B0 (0.997172, 0.989587). EfficientNet-B0's pre-cleanup perfect score did not survive retraining on the cleaned data, and cleaning reversed the model ranking: the smallest model tested became the most accurate. Differences of one to four errors between models fall within overlapping 95\% confidence intervals, so this ranking is indicative rather than statistically established.
 
-\bibitem{howard2019mobilenetv3}
-Howard, A., Sandler, M., Chu, G., Chen, L., Chen, B., Tan, M., Wang, W., Zhu, Y., Pang, R., Vasudevan, V., Le, Q. and Adam, H. (2019) Searching for MobileNetV3. In: \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}. Seoul, pp.1314--1324.
+\subsection{Data-Integrity Findings}
 
-\bibitem{huang2017densely}
-Huang, G., Liu, Z., van der Maaten, L. and Weinberger, K. (2017) Densely connected convolutional networks. In: \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}. Honolulu, HI, pp.4700--4708.
+The near-duplicate audit is the report's central methodological result: 694 crops (675 of them RBCs) were flagged across every split-pair combination, 113 of them in the test split, despite the dataset using official source-image-level splits. This shows that a split at the image level does not guarantee crop-level independence when the underlying collections themselves may overlap, and that an unusually strong result is itself evidence worth checking before it is reported.
 
-\bibitem{lin2017focal}
-Lin, T., Goyal, P., Girshick, R., He, K. and Dollár, P. (2017) Focal loss for dense object detection. In: \emph{Proceedings of the IEEE International Conference on Computer Vision (ICCV)}. Venice, pp.2980--2988.
+\subsection{Explainability}
 
-\bibitem{loshchilov2019adamw}
-Loshchilov, I. and Hutter, F. (2019) Decoupled weight decay regularization. In: \emph{International Conference on Learning Representations (ICLR)}. New Orleans, LA.
+Grad-CAM overlays on the pre-cleanup EfficientNet-B0 checkpoint placed high activation on plausible regions (the nucleus for WBCs, the cell body for RBCs, the granular cluster for platelets) rather than on the background, offering a qualitative, illustrative check consistent with the model attending to the cell rather than to artefacts. No saliency sanity check was run and no map was produced for the retrained, better-performing models, so this evidence is suggestive only.
 
-\bibitem{selvaraju2017gradcam}
-Selvaraju, R., Cogswell, M., Das, A., Vedantam, R., Parikh, D. and Batra, D. (2017) Grad-CAM: Visual explanations from deep networks via gradient-based localization. In: \emph{Proceedings of the IEEE International Conference on Computer Vision (ICCV)}. Venice, pp.618--626.
+\subsection{Limitations}
 
-\bibitem{tan2019efficientnet}
-Tan, M. and Le, Q. (2019) EfficientNet: Rethinking model scaling for convolutional neural networks. In: \emph{Proceedings of the 36th International Conference on Machine Learning (ICML)}. Long Beach, CA, pp.6105--6114.
+Every result is a single run at a fixed seed, with error-rate confidence intervals that overlap across models. The pHash audit cannot detect flipped or rotated duplicates and compared crops within class only, so some residual leakage in the cleaned test set cannot be ruled out, and the pre- and post-cleanup evaluations use different test sets, which complicates direct comparison. Grad-CAM was applied to one checkpoint that is no longer the best model, and training/evaluation timings are single-run wall-clock figures rather than a controlled benchmark.
 
-\end{thebibliography}
+\subsection{Future Work}
 
+Repeating each model across several seeds, or using grouped cross-validation, would let the current ranking be tested statistically rather than read off single runs. Hashing at source-image level (rather than per-crop) and auditing for leakage before the first training run, rather than after an unusually strong result, would avoid a full retraining cycle and give the split process the earlier scrutiny it needed here. Re-running Grad-CAM with a parameter-randomisation sanity check on the retrained models, saving per-sample predictions, and testing on an independent microscopy dataset would each add evidence this report currently lacks.
+
+\subsection{Practical and Ethical Considerations}
+
+This is an educational exercise on a public dataset, not a clinical tool. Misclassifying platelets as white cells, or the reverse, could distort automated cell counts, and any real diagnostic use would require external validation on independent patient data, ethical approval, and review by a qualified clinician. Because the four collections integrated into TXL-PBC were acquired under different conditions, results here should not be assumed to transfer to other scanners, staining protocols or patient populations without further testing.
+
+\FloatBarrier
+%TC:ignore
+\clearpage
 \appendix
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{agsm} % Harvard-style; if Overleaf cannot find agsm.bst, use apalike instead
+\bibliography{references}
+\addcontentsline{toc}{section}{Appendices}
+\clearpage
+
+\titleformat{\section}{\normalfont\Large\bfseries}{\thesection}{0.75em}{}
 
 % =====================================================
-\section{Appendix A: Per-Model Confusion Matrices}
+\section{Per-Model Confusion Matrices}\label{app:cm}
+
+Normalised confusion matrices (rows sum to 1) for each model on the cleaned test set (1,768 crops), from the post-cleanup evaluation.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{outputs/results/efficientnet_b0_confusion_matrix.png}
-\caption{EfficientNet-B0 confusion matrix (individual).}
+\includegraphics[width=0.42\textwidth]{post_dedup_efficientnet_b0_confusion_matrix.png}
+\caption{EfficientNet-B0 confusion matrix (cleaned test set).}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{outputs/results/mobilenet_v3_small_confusion_matrix.png}
-\caption{MobileNetV3-Small confusion matrix (individual).}
+\includegraphics[width=0.42\textwidth]{post_dedup_mobilenet_v3_small_confusion_matrix.png}
+\caption{MobileNetV3-Small confusion matrix (cleaned test set).}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{outputs/results/densenet121_confusion_matrix.png}
-\caption{DenseNet121 confusion matrix (individual).}
-\end{figure}
-
-% =====================================================
-\section{Appendix B: Near-Duplicate Audit Evidence}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.7\textwidth]{outputs/results/near_duplicate_examples.png}
-\caption{Example near-duplicate crop pairs identified by the perceptual-hash audit.}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.9\textwidth]{outputs/results/sanity_check_test_samples.png}
-\caption{Sanity-check sample grid confirming test crops are distinct and correctly labelled.}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.45\textwidth]{outputs/results/train_val_pairwise_phash_examples.png}
-\caption{Example near-duplicate pairs, train vs.\ validation split.}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.45\textwidth]{outputs/results/train_test_pairwise_phash_examples.png}
-\caption{Example near-duplicate pairs, train vs.\ test split.}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.45\textwidth]{outputs/results/val_test_examples.png}
-\caption{Example near-duplicate pairs, validation vs.\ test split.}
+\includegraphics[width=0.42\textwidth]{post_dedup_densenet121_confusion_matrix.png}
+\caption{DenseNet121 confusion matrix (cleaned test set).}
 \end{figure}
 
 % =====================================================
-\section{Appendix C: Reproducing the Pipeline}
+\section{Near-Duplicate Audit Evidence}\label{app:audit}
 
-\begin{lstlisting}[caption={End-to-end commands}]
+The figures below show example pairs flagged by the perceptual-hash audit. Several pairs, particularly in the train--test and validation--test panels, differ visibly in staining or shape, so some flags are probably false positives. The Hamming distance of each pair is not annotated.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\textwidth]{near_duplicate_examples.png}
+\caption[Example flagged crop pairs]{Example near-duplicate crop pairs flagged by the perceptual-hash audit.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{sanity_check_test_samples.png}
+\caption[Sample test crops by class]{Sanity-check sample grid of test crops by class. The platelet crops appear smaller and blurrier than the other classes.}
+\label{fig:sanity}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{0.31\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{train_val_pairwise_phash_examples.png}
+    \caption{Train vs.\ validation}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.31\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{train_test_pairwise_phash_examples.png}
+    \caption{Train vs.\ test}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.31\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{val_test_examples.png}
+    \caption{Validation vs.\ test}
+\end{subfigure}
+\caption[Example flagged pairs between splits]{Example near-duplicate pairs flagged between splits; the two crops in each row are one flagged pair.}
+\label{fig:pairs}
+\end{figure}
+
+% =====================================================
+\section{Reproducing the Pipeline}\label{app:repro}
+
+The full project, including the configuration file and requirements, is supplied as \texttt{code.zip} with this report (Table~\ref{tab:code}); source listings are not reproduced here. Results before and after cleaning were written to separate folders (\texttt{outputs\_pre\_dedup/} and \texttt{outputs\_post\_dedup/}). The commands below reproduce the pipeline.
+
+\begin{table}[H]
+\centering
+\caption{Contents of the code archive.}
+\label{tab:code}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{7.6cm}|>{\raggedright\arraybackslash}p{7.2cm}|}
+\hline
+\textbf{File} & \textbf{Purpose} \\
+\hline
+\texttt{src/crop\_dataset.py} & Crops annotated cells and builds the class folders \\
+\hline
+\texttt{src/deduplicate\_processed\_dataset.py} & pHash near-duplicate audit and removal \\
+\hline
+\texttt{src/train.py} & Model construction, sampler, loss and training loop \\
+\hline
+\texttt{src/evaluate.py} & Test-set evaluation and metrics \\
+\hline
+\texttt{src/plot\_model\_results.py} & Comparison figures \\
+\hline
+\texttt{src/gradcam.py} & Grad-CAM overlays \\
+\hline
+\texttt{configs/config.yaml} & Hyperparameters and paths \\
+\hline
+\texttt{requirements.txt} & Python dependencies \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{lstlisting}[numbers=none,caption={End-to-end commands}]
 # 1. Install dependencies
 pip install -r requirements.txt
 
 # 2. Build cropped dataset from raw images + YOLO labels
 python src/crop_dataset.py --config configs/config.yaml
 
-# 3. Audit and remove near-duplicate crops
-python src/deduplicate_processed_dataset.py           # dry run
-python src/deduplicate_processed_dataset.py --apply    # apply cleanup
+# 3. Audit near-duplicate crops (dry run; writes the audit summary)
+python src/deduplicate_processed_dataset.py
 
-# 4. Train each model on the cleaned dataset
+# 4. Train and evaluate on the original splits (pre-cleanup results)
 python src/train.py --config configs/config.yaml --model efficientnet_b0
 python src/train.py --config configs/config.yaml --model mobilenet_v3_small
 python src/train.py --config configs/config.yaml --model densenet121
-
-# 5. Evaluate and produce comparison figures
 python src/evaluate.py --config configs/config.yaml --model all
 python src/plot_model_results.py --config configs/config.yaml
+
+# 5. Remove the flagged crops, then repeat step 4 with the output
+#    folders set to a separate location (post-cleanup results)
+python src/deduplicate_processed_dataset.py --apply
 
 # 6. Generate Grad-CAM overlays
 python src/gradcam.py --config configs/config.yaml --model efficientnet_b0
 \end{lstlisting}
+
+% =====================================================
+\FloatBarrier
+\clearpage
+
+%TC:endignore
 
 \end{document}

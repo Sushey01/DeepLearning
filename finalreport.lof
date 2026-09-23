@@ -1,0 +1,9 @@
+\contentsline {figure}{\numberline {1}{\ignorespaces Pipeline}}{7}{figure.caption.2}%
+\contentsline {figure}{\numberline {2}{\ignorespaces Confusion matrices, cleaned test set}}{9}{figure.caption.5}%
+\contentsline {figure}{\numberline {3}{\ignorespaces Grad-CAM examples}}{11}{figure.caption.7}%
+\contentsline {figure}{\numberline {4}{\ignorespaces EfficientNet-B0 confusion matrix (cleaned test set).}}{13}{figure.caption.8}%
+\contentsline {figure}{\numberline {5}{\ignorespaces MobileNetV3-Small confusion matrix (cleaned test set).}}{13}{figure.caption.9}%
+\contentsline {figure}{\numberline {6}{\ignorespaces DenseNet121 confusion matrix (cleaned test set).}}{14}{figure.caption.10}%
+\contentsline {figure}{\numberline {7}{\ignorespaces Example flagged crop pairs}}{14}{figure.caption.11}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Sample test crops by class}}{15}{figure.caption.12}%
+\contentsline {figure}{\numberline {9}{\ignorespaces Example flagged pairs between splits}}{15}{figure.caption.13}%
